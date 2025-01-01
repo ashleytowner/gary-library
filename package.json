@@ -16,5 +16,8 @@
   "bugs": {
     "url": "https://github.com/ashleytowner/gary-library/issues"
   },
-  "homepage": "https://github.com/ashleytowner/gary-library#readme"
+  "homepage": "https://github.com/ashleytowner/gary-library#readme",
+  "dependencies": {
+    "sqlite3": "^5.1.7"
+  }
 }
