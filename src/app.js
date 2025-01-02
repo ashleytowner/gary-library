@@ -626,6 +626,14 @@ app.put("/users/update-password", (req, res) => {
     "UPDATE Users SET password=? WHERE id = ?",
     bcrypt.hashSync(new_password, 10),
     res.locals.userId,
+		(err) => {
+			if (err) {
+				console.error('Could not update password', err);
+				res.sendStatus(500);
+				return;
+			}
+			res.status(201).send('Password Updated Successfully!');
+		}
   );
 });
 
