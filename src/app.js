@@ -1,5 +1,5 @@
 const sqlite3 = require("sqlite3");
-const db = new sqlite3.Database("./database.db");
+const db = new sqlite3.Database("./database.sqlite");
 const express = require("express");
 const cookieParser = require("cookie-parser");
 const crypto = require("crypto");
@@ -38,23 +38,18 @@ db.serialize(() => {
 		FOREIGN KEY (item) REFERENCES Items(id),
 		FOREIGN KEY (user) REFERENCES Users(id)
 	)`);
-  db.run(`CREATE TABLE IF NOT EXISTS Borrows (
+  db.run(`CREATE TABLE IF NOT EXISTS Loans (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		action TEXT NOT NULL CHECK (action IN ('borrow', 'return')),
 		item INTEGER NOT NULL,
 		user INTEGER NOT NULL,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		loaned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		returned_at TIMESTAMP,
 		FOREIGN KEY (item) REFERENCES Items(id),
 		FOREIGN KEY (user) REFERENCES Users(id)
 	)`);
   db.run(`CREATE VIEW IF NOT EXISTS items_view AS
 		SELECT i.id as id, name, description, format, username as owner FROM Items i
 		JOIN Users u ON i.owner = u.id`);
-  db.run(`CREATE VIEW IF NOT EXISTS ledger AS
-		SELECT l.id as id, i.name as item, i.id as item_id, u.username as user, l.status, l.is_borrow, l.created_at FROM Lends l
-		JOIN Users u ON l.user = u.id
-		JOIN Items i ON l.item = i.id
-	`);
   const pword = bcrypt.hashSync("admin", 10);
   db.run(
     "INSERT OR IGNORE INTO Users (id, username, password, is_admin) VALUES (1, ?, ?, 1)",
@@ -267,31 +262,44 @@ app.get("/items/create", (_req, res) => {
 });
 
 app.get("/items/:id", (req, res) => {
-  db.all("SELECT * FROM items WHERE id = ?", req.params.id, (err, rows) => {
-    if (err) {
-      console.error("Could not fetch item", err);
-      return;
-    }
-    if (rows.length === 0) {
-      res.sendStatus(404);
-      return;
-    }
-    const item = rows[0];
-    console.log(item);
-    let html = `<div>
-				<h1>${item.name}</h1>
-				<p>${item.description}</p>
-				<button hx-post="/items/${item.id}/request">Request to Borrow</button>
-			</div>`;
-    db.all(
-      'SELECT r.*, u.username FROM Requests r JOIN Users u ON r.user = u.id WHERE item = ? AND status = "pending" ORDER BY created_at DESC',
-      item.id,
-      (err, rows) => {
-        if (err) {
-          console.error("Could not fetch requests for item", err);
-        } else if (rows.length > 0) {
-          const isOwner = item.owner === res.locals.userId;
-          html += `<h2>Requests</h2>
+  db.all(
+    "SELECT i.*, l.id as loan_id, l.returned_at, l.loaned_at FROM Items i LEFT JOIN Loans l ON i.id = l.item WHERE i.id = ? ORDER BY l.loaned_at DESC;",
+    req.params.id,
+    (err, rows) => {
+      if (err) {
+        console.error("Could not fetch item", err);
+        return;
+      }
+      if (rows.length === 0) {
+        res.sendStatus(404);
+        return;
+      }
+      const item = rows[0];
+      const isOnLoan = item.returned_at === null && Boolean(item.loaned_at);
+      const isOwner = item.owner === res.locals.userId;
+      let html = `<div>
+      <h1>${item.name}</h1>
+      <p>${item.description}</p>
+			<p>${isOnLoan ? "UNAVAILABLE" : "AVAILABLE"}</p>
+			${
+        isOwner && isOnLoan
+          ? `<button hx-put="/loan/${item.loan_id}/return" hx-swap="outerHTML">Mark As Returned</button>`
+          : ""
+      }
+      ${
+        !isOwner
+          ? `<button hx-post="/items/${item.id}/request">Request to Borrow</button>`
+          : ""
+      }
+    </div>`;
+      db.all(
+        'SELECT r.*, u.username FROM Requests r JOIN Users u ON r.user = u.id WHERE item = ? AND status = "pending" ORDER BY created_at DESC',
+        item.id,
+        (err, rows) => {
+          if (err) {
+            console.error("Could not fetch requests for item", err);
+          } else if (rows.length > 0) {
+            html += `<h2>Requests</h2>
             <table>
               <tr>
                 <th>User</th>
@@ -319,11 +327,12 @@ app.get("/items/:id", (req, res) => {
                 )
                 .join("")}
             </table>`;
-        }
-        res.render("layout", { title: item.name, body: html });
-      },
-    );
-  });
+          }
+          res.render("layout", { title: item.name, body: html });
+        },
+      );
+    },
+  );
 });
 
 app.post("/items/:id/request", (req, res) => {
@@ -414,14 +423,14 @@ app.put("/requests/:id/approve", (req, res) => {
           );
 
           db.run(
-            "INSERT INTO Borrows (action, item, user) VALUES (?, ?, ?)",
-            "borrow",
+            "INSERT INTO Loans (item, user) VALUES (?, ?)",
             row.item,
             row.user,
           );
 
           db.run("COMMIT");
 
+          res.setHeader("HX-Refresh", "true");
           res.status(201).send("Successfully Approved");
         } catch (err) {
           console.error("Could not approve the borrow", err);
@@ -429,6 +438,41 @@ app.put("/requests/:id/approve", (req, res) => {
           res.sendStatus(500);
         }
       });
+    },
+  );
+});
+
+app.put("/loan/:id/return", (req, res) => {
+  db.get(
+    "SELECT l.*, i.owner FROM Loans l JOIN Items i ON l.item = i.id WHERE l.id = ?",
+    req.params.id,
+    (err, row) => {
+      if (err) {
+        console.error("Cannot return item", err);
+        res.sendStatus(500);
+        return;
+      }
+      if (!row) {
+        res.sendStatus(404);
+        return;
+      }
+      if (row.owner !== res.locals.userId) {
+        res.sendStatus(403);
+        return;
+      }
+      db.run(
+        "UPDATE Loans SET returned_at = CURRENT_TIMESTAMP WHERE id = ?",
+        req.params.id,
+        (err) => {
+          if (err) {
+            console.error("Could not update timestamp");
+            res.sendStatus(500);
+            return;
+          }
+          res.setHeader("HX-Refresh", "true");
+          res.status(201).send("Successfully Returned");
+        },
+      );
     },
   );
 });
@@ -460,6 +504,7 @@ app.put("/requests/:id/reject", (req, res) => {
             res.sendStatus(500);
             return;
           }
+          res.setHeader("HX-Refresh", "true");
           res.status(201).send("Successfully Rejected");
         },
       );
