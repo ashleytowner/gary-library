@@ -635,8 +635,8 @@ app.delete("/users/:id", isAdmin, (req, res) => {
   res.sendStatus(201);
 });
 
-app.listen(3000, () => {
-  console.log("App listening on port 3000");
+app.listen(1234, () => {
+  console.log("App listening on port 1234");
 });
 
 process.on("SIGINT", () => {
