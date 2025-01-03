@@ -57,6 +57,15 @@ db.serialize(() => {
     FROM Items i 
     JOIN Users u ON i.owner = u.id
     LEFT JOIN Loans l ON i.id = l.item AND l.returned_at IS NULL;`);
+  db.run(`CREATE TABLE IF NOT EXISTS ItemTags (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		item INTEGER NOT NULL,
+		tag TEXT NOT NULL,
+		value TEXT NOT NULL,
+		FOREIGN KEY (item) REFERENCES Items(id)
+	)`);
+  db.run(`CREATE VIEW IF NOT EXISTS tags AS
+		SELECT DISTINCT tag FROM ItemTags`);
   const pword = bcrypt.hashSync("admin", 10);
   db.run(
     "INSERT OR IGNORE INTO Users (id, username, password, is_admin) VALUES (1, ?, ?, 1)",
@@ -300,7 +309,11 @@ app.get("/items/:id", (req, res) => {
       let html = `<div>
       <h1>${item.name}</h1>
       <p>${item.description}</p>
-      <p>${item.available ? "☑ Available" : `☒ Unavailable (On Loan to ${item.username})`}</p>
+      <p>${
+        item.available
+          ? "☑ Available"
+          : `☒ Unavailable (On Loan to ${item.username})`
+      }</p>
       ${
         isOwner && !item.available
           ? `<button hx-put="/loan/${item.loan_id}/return" hx-swap="outerHTML">Mark As Returned</button>`
@@ -313,13 +326,26 @@ app.get("/items/:id", (req, res) => {
       }
     </div>`;
       db.all(
-        'SELECT r.*, u.username FROM Requests r JOIN Users u ON r.user = u.id WHERE item = ? AND status = "pending" ORDER BY created_at DESC',
-        item.id,
+        "SELECT * FROM ItemTags WHERE item = ?",
+        req.params.id,
         (err, rows) => {
           if (err) {
-            console.error("Could not fetch requests for item", err);
+            console.error("Could not get item tags", err);
           } else if (rows.length > 0) {
-            html += `<h2>Requests</h2>
+            html += `<h2>Tags</h2><button hx-get="/items/${
+              req.params.id
+            }/tag" hx-select="#page_body > *" hx-swap="outerHTML">Add Tag</button>${rows
+              .map((tag) => `<p>${tag.tag}: ${tag.value}</p>`)
+              .join("")}`;
+          }
+          db.all(
+            'SELECT r.*, u.username FROM Requests r JOIN Users u ON r.user = u.id WHERE item = ? AND status = "pending" ORDER BY created_at DESC',
+            item.id,
+            (err, rows) => {
+              if (err) {
+                console.error("Could not fetch requests for item", err);
+              } else if (rows.length > 0) {
+                html += `<h2>Requests</h2>
             <table>
               <tr>
                 <th>User</th>
@@ -347,8 +373,10 @@ app.get("/items/:id", (req, res) => {
                 )
                 .join("")}
             </table>`;
-          }
-          res.render("layout", { title: item.name, body: html });
+              }
+              res.render("layout", { title: item.name, body: html });
+            },
+          );
         },
       );
     },
@@ -553,14 +581,75 @@ app.post("/items", (req, res) => {
   );
 });
 
-/** @type {import("express").RequestHandler} */
-const isAdmin = (_req, res, next) => {
-  if (!res.locals.isAdmin) {
-    res.sendStatus(403);
-  } else {
-    next();
+app.get("/items/:id/tag", (req, res) => {
+  db.all("SELECT * FROM tags", (err, rows) => {
+    if (err) {
+      console.error("Could not get tags", err);
+      return res.sendStatus(500);
+    }
+    const options = ['-- Select Tag --', '-- Custom --', ...rows.map(row => row.tag)]
+      .map((tag) => {
+        return `<option value="${tag}">${tag}</option>`;
+      })
+      .join("");
+    const html = `
+		<form hx-post="/tags">
+			<input type="text" name="item" value="${req.params.id}" hidden />
+			<label for="tag">Tag Name</label>
+			<select name="tag" id="tag_select">
+				${options}
+			</select>
+			<input type="text" name="custom_tag" id="custom_tag" hidden />
+			<label for="value">Tag Value</label>
+			<input type="text" name="value" />
+			<button type="Submit">Tag Item</button>
+		</form>
+		<script>
+			const selectElement = document.getElementById('tag_select');
+			const customTag = document.getElementById('custom_tag');
+			selectElement.addEventListener('change', () => {
+				if (selectElement.value === '-- Custom --') {
+					customTag.removeAttribute('hidden');
+					selectElement.setAttribute('hidden', 'true');
+					customTag.name = 'tag';
+					selectElement.name = 'old';
+				}
+			});
+		</script>
+	`;
+    res.render("layout", { title: "Tag Item", body: html });
+  });
+});
+
+app.post("/tags", (req, res) => {
+  const { item, tag, value } = req.body;
+  if (!item) {
+    return res.status(400).send("Item ID is Required");
   }
-};
+  if (!tag) {
+    return res.status(400).send("Tag name is Required");
+  }
+	if (tag.startsWith('--')) {
+		return res.status(400).send("Invalid tag Name");
+	}
+  if (!value) {
+    return res.status(400).send("Tag value is Required");
+  }
+  db.run(
+    "INSERT INTO ItemTags (item, tag, value) VALUES (?, ?, ?)",
+    item,
+    tag,
+    value,
+    (err) => {
+      if (err) {
+        console.error("Could not add tag", err);
+        return res.sendStatus(500);
+      }
+      res.setHeader("HX-Redirect", `/items/${item}`);
+      res.sendStatus(201);
+    },
+  );
+});
 
 app.get("/profile", (_req, res) => {
   db.get("SELECT * FROM Users WHERE id = ?", res.locals.userId, (err, row) => {
@@ -584,6 +673,15 @@ app.get("/profile", (_req, res) => {
     });
   });
 });
+
+/** @type {import("express").RequestHandler} */
+const isAdmin = (_req, res, next) => {
+  if (!res.locals.isAdmin) {
+    res.sendStatus(403);
+  } else {
+    next();
+  }
+};
 
 app.get("/sessions", isAdmin, (req, res) => {
   db.all(
