@@ -63,8 +63,9 @@ db.serialize(() => {
 		value TEXT NOT NULL,
 		FOREIGN KEY (item) REFERENCES Items(id)
 	)`);
-  db.run(`CREATE VIEW IF NOT EXISTS tags AS
-		SELECT DISTINCT tag FROM ItemTags`);
+  db.run(
+    "CREATE VIEW IF NOT EXISTS tags AS SELECT DISTINCT tag FROM ItemTags;",
+  );
   const pword = bcrypt.hashSync("admin", 10);
   db.run(
     "INSERT OR IGNORE INTO Users (id, username, password, is_admin) VALUES (1, ?, ?, 1)",
@@ -565,47 +566,64 @@ app.post("/items", (req, res) => {
 });
 
 app.get("/items/:id/tag", (req, res) => {
+  const html = `<form hx-post="/tags">
+    <datalist
+      id="tag-names"
+      hx-get="/tags/options"
+      hx-trigger="load"
+    ></datalist>
+    <datalist id="tag-values"></datalist>
+    <input name="item" value="${req.params.id}" hidden />
+    <label for="tag">Tag Name</label>
+    <input
+      list="tag-names"
+      type="text"
+      name="tag"
+      hx-get="/tags/values/options"
+      hx-trigger="change"
+      hx-target="#tag-values"
+    />
+    <label for="value">Tag Value</label>
+    <input list="tag-values" name="value" />
+    <button type="Submit">Tag Item</button>
+  </form>`;
+  res.render("layout", { title: "Tag Item", body: html });
+});
+
+app.get("/tags/options", (req, res) => {
   db.all("SELECT * FROM tags", (err, rows) => {
     if (err) {
       console.error("Could not get tags", err);
       return res.sendStatus(500);
     }
-    const options = [
-      "-- Select Tag --",
-      "-- Custom --",
-      ...rows.map((row) => row.tag),
-    ]
-      .map((tag) => {
-        return `<option value="${tag}">${tag}</option>`;
-      })
-      .join("");
-    const html = `
-		<form hx-post="/tags">
-			<input type="text" name="item" value="${req.params.id}" hidden />
-			<label for="tag">Tag Name</label>
-			<select name="tag" id="tag_select">
-				${options}
-			</select>
-			<input type="text" name="custom_tag" id="custom_tag" hidden />
-			<label for="value">Tag Value</label>
-			<input type="text" name="value" />
-			<button type="Submit">Tag Item</button>
-		</form>
-		<script>
-			const selectElement = document.getElementById('tag_select');
-			const customTag = document.getElementById('custom_tag');
-			selectElement.addEventListener('change', () => {
-				if (selectElement.value === '-- Custom --') {
-					customTag.removeAttribute('hidden');
-					selectElement.setAttribute('hidden', 'true');
-					customTag.name = 'tag';
-					selectElement.name = 'old';
-				}
-			});
-		</script>
-	`;
-    res.render("layout", { title: "Tag Item", body: html });
+    const opts = rows.map(
+      (row) =>
+        `<option label="${row.tag}" value="${row.tag}">${row.tag}</option>`,
+    );
+    res.send(opts.join(""));
   });
+});
+
+app.get("/tags/values/options", (req, res) => {
+  const tag = req.query.tag;
+  if (!tag) {
+    return res.status(400).send("Tag is required");
+  }
+  db.all(
+    "SELECT DISTINCT value FROM ItemTags WHERE tag = ?",
+    tag,
+    (err, rows) => {
+      if (err) {
+        console.error("Could not get tag values", err);
+        return res.sendStatus(500);
+      }
+      const opts = rows.map(
+        (row) =>
+          `<option label="${row.value}" value="${row.value}">${row.value}</option>`,
+      );
+      res.send(opts.join(""));
+    },
+  );
 });
 
 app.post("/tags", (req, res) => {
