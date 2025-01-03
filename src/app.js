@@ -12,7 +12,6 @@ db.serialize(() => {
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     description TEXT,
-    format TEXT NOT NULL,
     owner INTEGER NOT NULL,
     FOREIGN KEY (owner) REFERENCES Users(id)
   )`);
@@ -229,7 +228,6 @@ app.get("/items", (req, res) => {
           ? `<table id="item-table">
           <tr>
             <th>Name</th>
-            <th>Format</th>
             <th>Owner</th>
             <th>Available</th>
           </tr>
@@ -237,8 +235,8 @@ app.get("/items", (req, res) => {
             .map(
               (row) =>
                 `<tr><td><a href="/items/${row.id}">${row.name}</a></td><td>${
-                  row.format
-                }</td><td>${row.owner_name}</td><td>${
+                  row.owner_name
+                }</td><td>${
                   row.available ? "☑ Available" : "☒ Unavailable"
                 }</td></tr>`,
             )
@@ -268,19 +266,6 @@ app.get("/items/create", (_req, res) => {
       <input type="text" name="name" />
       <label for="description">Description</label>
       <textarea name="description"></textarea>
-      <label for="format">Format</label>
-      <select name="format">
-        <option value="">-- Select Format --</option>
-        <option value="BLURAY">Blu-Ray</option>
-        <option value="BOOK">Book</option>
-        <option value="CD">CD</option>
-        <option value="DVD">DVD</option>
-        <option value="EPUB">EPub</option>
-        <option value="MP3">MP3</option>
-        <option value="MP4">MP4</option>
-        <option value="PDF">PDF</option>
-        <option value="VINYL">Vinyl</option>
-      </select>
       <button type="submit">Create new Item</button>
     </form>`,
   });
@@ -329,12 +314,11 @@ app.get("/items/:id", (req, res) => {
         "SELECT * FROM ItemTags WHERE item = ?",
         req.params.id,
         (err, rows) => {
+          html += `<h2>Tags</h2><button hx-get="/items/${req.params.id}/tag" hx-select="#page_body > *" hx-swap="outerHTML">Add Tag</button>`;
           if (err) {
             console.error("Could not get item tags", err);
           } else if (rows.length > 0) {
-            html += `<h2>Tags</h2><button hx-get="/items/${
-              req.params.id
-            }/tag" hx-select="#page_body > *" hx-swap="outerHTML">Add Tag</button>${rows
+            html += `${rows
               .map((tag) => `<p>${tag.tag}: ${tag.value}</p>`)
               .join("")}`;
           }
@@ -562,12 +546,11 @@ app.put("/requests/:id/reject", (req, res) => {
 });
 
 app.post("/items", (req, res) => {
-  const { name, description, format } = req.body;
+  const { name, description } = req.body;
   db.run(
-    "INSERT INTO Items (name, description, format, owner) VALUES (?, ?, ?, ?)",
+    "INSERT INTO Items (name, description, owner) VALUES (?, ?, ?)",
     name,
     description,
-    format,
     res.locals.userId,
     (err) => {
       if (err) {
@@ -587,7 +570,11 @@ app.get("/items/:id/tag", (req, res) => {
       console.error("Could not get tags", err);
       return res.sendStatus(500);
     }
-    const options = ['-- Select Tag --', '-- Custom --', ...rows.map(row => row.tag)]
+    const options = [
+      "-- Select Tag --",
+      "-- Custom --",
+      ...rows.map((row) => row.tag),
+    ]
       .map((tag) => {
         return `<option value="${tag}">${tag}</option>`;
       })
@@ -629,9 +616,9 @@ app.post("/tags", (req, res) => {
   if (!tag) {
     return res.status(400).send("Tag name is Required");
   }
-	if (tag.startsWith('--')) {
-		return res.status(400).send("Invalid tag Name");
-	}
+  if (tag.startsWith("--")) {
+    return res.status(400).send("Invalid tag Name");
+  }
   if (!value) {
     return res.status(400).send("Tag value is Required");
   }
