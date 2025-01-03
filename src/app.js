@@ -4,6 +4,7 @@ const express = require("express");
 const cookieParser = require("cookie-parser");
 const crypto = require("crypto");
 const bcrypt = require("bcrypt");
+const marked = require("marked");
 
 const app = express();
 
@@ -294,7 +295,7 @@ app.get("/items/:id", (req, res) => {
       const isOwner = item.owner === res.locals.userId;
       let html = `<div>
       <h1>${item.name}</h1>
-      <p>${item.description}</p>
+      <p>${marked.parse(item.description)}</p>
       <p>${
         item.available
           ? "☑ Available"

@@ -13,7 +13,7 @@
   font-style: normal;
 }
 
-.merriweather-bold {
+.merriweather-bold, strong {
   font-family: "Merriweather", serif;
   font-weight: 700;
   font-style: normal;
@@ -31,13 +31,13 @@
   font-style: italic;
 }
 
-.merriweather-regular-italic {
+.merriweather-regular-italic, em {
   font-family: "Merriweather", serif;
   font-weight: 400;
   font-style: italic;
 }
 
-.merriweather-bold-italic {
+.merriweather-bold-italic, em strong, strong em {
   font-family: "Merriweather", serif;
   font-weight: 700;
   font-style: italic;
