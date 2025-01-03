@@ -9,49 +9,54 @@ const app = express();
 
 db.serialize(() => {
   db.run(`CREATE TABLE IF NOT EXISTS Items (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name TEXT NOT NULL,
-		description TEXT,
-		format TEXT NOT NULL,
-		owner INTEGER NOT NULL,
-		FOREIGN KEY (owner) REFERENCES Users(id)
-	)`);
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT,
+    format TEXT NOT NULL,
+    owner INTEGER NOT NULL,
+    FOREIGN KEY (owner) REFERENCES Users(id)
+  )`);
   db.run(`CREATE TABLE IF NOT EXISTS Users (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		username TEXT NOT NULL,
-		password TEXT NOT NULL,
-		is_admin INTEGER
-	)`);
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL,
+    password TEXT NOT NULL,
+    is_admin INTEGER
+  )`);
   db.run(`CREATE TABLE IF NOT EXISTS Sessions (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		key TEXT UNIQUE,
-		user INTEGER NOT NULL,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY (user) REFERENCES Users(id)
-	)`);
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    key TEXT UNIQUE,
+    user INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user) REFERENCES Users(id)
+  )`);
   db.run("CREATE INDEX IF NOT EXISTS idx_sessions_key ON Sessions(key)");
   db.run(`CREATE TABLE IF NOT EXISTS Requests (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		action TEXT NOT NULL CHECK (action IN ('borrow', 'consult')),
-		item INTEGER NOT NULL,
-		user INTEGER NOT NULL,
-		status TEXT NOT NULL CHECK (status IN ('pending', 'rejected', 'approved')),
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		FOREIGN KEY (item) REFERENCES Items(id),
-		FOREIGN KEY (user) REFERENCES Users(id)
-	)`);
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    action TEXT NOT NULL CHECK (action IN ('borrow', 'consult')),
+    item INTEGER NOT NULL,
+    user INTEGER NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('pending', 'rejected', 'approved')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (item) REFERENCES Items(id),
+    FOREIGN KEY (user) REFERENCES Users(id)
+  )`);
   db.run(`CREATE TABLE IF NOT EXISTS Loans (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		item INTEGER NOT NULL,
-		user INTEGER NOT NULL,
-		loaned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		returned_at TIMESTAMP,
-		FOREIGN KEY (item) REFERENCES Items(id),
-		FOREIGN KEY (user) REFERENCES Users(id)
-	)`);
-  db.run(`CREATE VIEW IF NOT EXISTS items_view AS
-		SELECT i.id as id, name, description, format, username as owner FROM Items i
-		JOIN Users u ON i.owner = u.id`);
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    item INTEGER NOT NULL,
+    user INTEGER NOT NULL,
+    loaned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    returned_at TIMESTAMP,
+    FOREIGN KEY (item) REFERENCES Items(id),
+    FOREIGN KEY (user) REFERENCES Users(id)
+  )`);
+  db.run(`CREATE VIEW IF NOT EXISTS v_items AS 
+    SELECT
+      i.*,
+      u.username as owner_name,
+      CASE WHEN l.loaned_at IS NULL THEN 1 ELSE 0 END as available
+    FROM Items i 
+    JOIN Users u ON i.owner = u.id
+    LEFT JOIN Loans l ON i.id = l.item AND l.returned_at IS NULL;`);
   const pword = bcrypt.hashSync("admin", 10);
   db.run(
     "INSERT OR IGNORE INTO Users (id, username, password, is_admin) VALUES (1, ?, ?, 1)",
@@ -81,14 +86,14 @@ app.get("/login", (req, res) => {
   res.render("layout", {
     title: "Login",
     body: `
-		<h1>Log In to the Gary Library</h1>
-		<form method="POST" action="/login">
-			<label for="username">Username</label>
-			<input type="text" name="username" />
-			<label for="password">Password</label>
-			<input type="password" name="password" />
-			<button type="submit">Login</button>
-		</form>
+    <h1>Log In to the Gary Library</h1>
+    <form method="POST" action="/login">
+      <label for="username">Username</label>
+      <input type="text" name="username" />
+      <label for="password">Password</label>
+      <input type="password" name="password" />
+      <button type="submit">Login</button>
+    </form>
 `,
   });
 });
@@ -192,9 +197,7 @@ app.get("/", (_req, res) => {
 
 app.get("/items", (req, res) => {
   const { search } = req.query;
-  const query = `SELECT * FROM items_view WHERE ${
-    search ? "name LIKE ?" : "1=1"
-  }`;
+  const query = `SELECT * FROM v_items WHERE ${search ? "name LIKE ?" : "1=1"}`;
   db.all(query, search ? [`%${search}%`] : [], (err, rows) => {
     if (err) {
       console.error("Error getting items", err);
@@ -212,25 +215,36 @@ app.get("/items", (req, res) => {
         />
       </form>`;
 
-      const html = `<table id="item-table">
+      const table =
+        rows.length > 0
+          ? `<table id="item-table">
           <tr>
             <th>Name</th>
             <th>Format</th>
             <th>Owner</th>
+            <th>Available</th>
           </tr>
           ${rows
             .map(
               (row) =>
-                `<tr><td><a href="/items/${row.id}">${row.name}</a></td><td>${row.format}</td><td>${row.owner}</td></tr>`,
+                `<tr><td><a href="/items/${row.id}">${row.name}</a></td><td>${
+                  row.format
+                }</td><td>${row.owner_name}</td><td>${
+                  row.available ? "☑ Available" : "☒ Unavailable"
+                }</td></tr>`,
             )
             .join("")}
         </table>
-      </form>`;
+      </form>`
+          : "<p>There are no items to display</p>";
       req.hxRequest
-        ? res.send(html)
+        ? res.send(table)
         : res.render("layout", {
             title: "Items",
-            body: '<a href="/items/create">Add Item</a>' + searchForm + html,
+            body:
+              '<h1>Library Items</h1><p>Here you can view & search through all the items in the library</p><a class="button-like" href="/items/create">Add Item</a>' +
+              searchForm +
+              table,
           });
     }
   });
@@ -265,7 +279,12 @@ app.get("/items/create", (_req, res) => {
 
 app.get("/items/:id", (req, res) => {
   db.all(
-    "SELECT i.*, l.id as loan_id, l.returned_at, l.loaned_at FROM Items i LEFT JOIN Loans l ON i.id = l.item WHERE i.id = ? ORDER BY l.loaned_at DESC;",
+    `SELECT i.*, l.id as loan_id, u.username
+    FROM v_items i 
+    LEFT JOIN Loans l ON i.id = l.item 
+    LEFT JOIN Users u ON l.user = u.id
+    WHERE i.id = ? 
+    ORDER BY l.loaned_at DESC;`,
     req.params.id,
     (err, rows) => {
       if (err) {
@@ -277,14 +296,13 @@ app.get("/items/:id", (req, res) => {
         return;
       }
       const item = rows[0];
-      const isOnLoan = item.returned_at === null && Boolean(item.loaned_at);
       const isOwner = item.owner === res.locals.userId;
       let html = `<div>
       <h1>${item.name}</h1>
       <p>${item.description}</p>
-			<p>${isOnLoan ? "UNAVAILABLE" : "AVAILABLE"}</p>
-			${
-        isOwner && isOnLoan
+      <p>${item.available ? "☑ Available" : `☒ Unavailable (On Loan to ${item.username})`}</p>
+      ${
+        isOwner && !item.available
           ? `<button hx-put="/loan/${item.loan_id}/return" hx-swap="outerHTML">Mark As Returned</button>`
           : ""
       }
@@ -361,8 +379,9 @@ app.post("/items/:id/request", (req, res) => {
       return;
     }
     db.get(
-      "SELECT * FROM Requests WHERE user = ? ORDER BY created_at DESC",
+      "SELECT * FROM Requests WHERE user = ? AND item = ? ORDER BY created_at DESC",
       res.locals.userId,
+      req.params.id,
       (err, request) => {
         if (err) {
           console.error("Could not fetch requests", err);
@@ -629,11 +648,11 @@ app.get("/users/create", isAdmin, (_req, res) => {
     title: "Create User",
     body: `
 <form hx-post="/users">
-			<label for="username">Username</label>
-			<input type="text" name="username" />
-			<label for="password">Password</label>
-			<input type="password" name="password" />
-			<button type="submit">Create User</button>
+      <label for="username">Username</label>
+      <input type="text" name="username" />
+      <label for="password">Password</label>
+      <input type="password" name="password" />
+      <button type="submit">Create User</button>
 </form>
 `,
   });

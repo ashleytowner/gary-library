@@ -1,4 +1,120 @@
-form {
-	display: flex;
-	flex-direction: column;
+@import url("https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400;1,700;1,900&family=Pirata+One&display=swap");
+
+.merriweather-light {
+  font-family: "Merriweather", serif;
+  font-weight: 300;
+  font-style: normal;
+}
+
+.merriweather-regular,
+* {
+  font-family: "Merriweather", serif;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.merriweather-bold {
+  font-family: "Merriweather", serif;
+  font-weight: 700;
+  font-style: normal;
+}
+
+.merriweather-black {
+  font-family: "Merriweather", serif;
+  font-weight: 900;
+  font-style: normal;
+}
+
+.merriweather-light-italic {
+  font-family: "Merriweather", serif;
+  font-weight: 300;
+  font-style: italic;
+}
+
+.merriweather-regular-italic {
+  font-family: "Merriweather", serif;
+  font-weight: 400;
+  font-style: italic;
+}
+
+.merriweather-bold-italic {
+  font-family: "Merriweather", serif;
+  font-weight: 700;
+  font-style: italic;
+}
+
+.merriweather-black-italic {
+  font-family: "Merriweather", serif;
+  font-weight: 900;
+  font-style: italic;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: "Pirata One", serif;
+  font-weight: 400;
+  font-style: normal;
+}
+
+table {
+  border-spacing: 0;
+}
+
+th {
+  border-bottom: 1px solid black;
+  font-weight: bold;
+}
+
+table td {
+  border-right: 1px solid black;
+  padding: 0.1rem 1rem;
+}
+
+table tr:nth-child(2n) {
+  background: #eee;
+}
+
+table td:last-child {
+  border-right: none;
+}
+
+/* form { */
+/*   display: flex; */
+/*   flex-direction: column; */
+/* } */
+
+a {
+  color: black;
+}
+
+button,
+.button-like {
+  background: white;
+	cursor: pointer;
+	border: 1px solid black;
+	padding: 5px;
+	display: inline-block;
+	margin: 0.5rem 0;
+	text-decoration: none;
+}
+
+button:hover,
+.button-like:hover,
+button:focus,
+.button-like:focus {
+	background: #ddd;
+}
+
+button:active,
+.button-like:active {
+	background: #aaa;
+}
+
+a:hover,
+a:focus {
+  text-decoration: none;
 }
