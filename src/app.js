@@ -23,11 +23,13 @@ db.serialize(() => {
 		is_admin INTEGER
 	)`);
   db.run(`CREATE TABLE IF NOT EXISTS Sessions (
-		id TEXT PRIMARY KEY,
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		key TEXT UNIQUE,
 		user INTEGER NOT NULL,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY (user) REFERENCES Users(id)
 	)`);
+  db.run("CREATE INDEX IF NOT EXISTS idx_sessions_key ON Sessions(key)");
   db.run(`CREATE TABLE IF NOT EXISTS Requests (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		action TEXT NOT NULL CHECK (action IN ('borrow', 'consult')),
@@ -120,7 +122,7 @@ app.post("/login", (req, res) => {
           } else {
             const id = buf.toString("base64");
             db.run(
-              "INSERT INTO Sessions (id, user) VALUES (?, ?)",
+              "INSERT INTO Sessions (key, user) VALUES (?, ?)",
               id,
               rows[0].id,
             );
@@ -140,7 +142,7 @@ app.use((req, res, next) => {
     const sessionId = req.cookies["Authorization"];
 
     db.all(
-      "SELECT user, is_admin FROM Sessions s JOIN Users u ON s.user = u.id WHERE s.id = ?",
+      "SELECT user, is_admin FROM Sessions s JOIN Users u ON s.user = u.id WHERE s.key = ?",
       sessionId,
       (err, rows) => {
         if (err) {
@@ -564,6 +566,42 @@ app.get("/profile", (_req, res) => {
   });
 });
 
+app.get("/sessions", isAdmin, (req, res) => {
+  db.all(
+    "SELECT s.*, u.username FROM Sessions s JOIN Users u ON s.user = u.id",
+    (err, rows) => {
+      console.log(rows);
+      if (err) {
+        console.error("Could not fetch sessions", err);
+        return res.sendStatus(500);
+      }
+      const table = `<table><tr><th>Session</th><th>User</th><th>Created</th><th>Action</th></tr>${rows
+        .map((session) => {
+          return `<tr><td>${session.key.substring(0, 8)}...</td><td>${
+            session.username
+          }</td><td>${
+            session.created_at
+          }</td><td><button hx-delete="/sessions/${
+            session.id
+          }">Invalidate</button></td></tr>`;
+        })
+        .join("")}`;
+      res.render("layout", { title: "Sessions", body: table });
+    },
+  );
+});
+
+app.delete("/sessions/:id", isAdmin, (req, res) => {
+  db.run("DELETE FROM Sessions WHERE id = ?", req.params.id, (err) => {
+    if (err) {
+      console.error("Could not delete session", err);
+      return res.sendStatus(500);
+    }
+    res.setHeader("HX-Refresh", "true");
+    res.status(201).send("Invalidated Session");
+  });
+});
+
 app.get("/users", isAdmin, (req, res) => {
   db.all("SELECT * FROM Users", (err, rows) => {
     if (err) {
@@ -579,7 +617,10 @@ app.get("/users", isAdmin, (req, res) => {
       .join("")}</table>`;
     req.hxRequest
       ? res.send(table)
-      : res.render("layout", { title: "Users", body: table });
+      : res.render("layout", {
+          title: "Users",
+          body: '<a href="/users/create">Add a user</a>' + table,
+        });
   });
 });
 
@@ -626,14 +667,14 @@ app.put("/users/update-password", (req, res) => {
     "UPDATE Users SET password=? WHERE id = ?",
     bcrypt.hashSync(new_password, 10),
     res.locals.userId,
-		(err) => {
-			if (err) {
-				console.error('Could not update password', err);
-				res.sendStatus(500);
-				return;
-			}
-			res.status(201).send('Password Updated Successfully!');
-		}
+    (err) => {
+      if (err) {
+        console.error("Could not update password", err);
+        res.sendStatus(500);
+        return;
+      }
+      res.status(201).send("Password Updated Successfully!");
+    },
   );
 });
 
