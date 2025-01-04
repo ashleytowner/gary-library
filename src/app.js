@@ -561,8 +561,20 @@ app.post("/items", (req, res) => {
         console.error("Failed to add Item", err);
         res.sendStatus(500);
       } else {
-        res.setHeader("HX-Redirect", "/items");
-        res.sendStatus(201);
+        db.get(
+          "SELECT id FROM Items WHERE name = ? AND owner = ? ORDER BY id DESC",
+          name,
+          res.locals.userId,
+          (err, row) => {
+            if (err) {
+              console.error("Could not fetch newly created item", err);
+              res.setHeader("HX-Redirect", "/items");
+            } else {
+              res.setHeader("HX-Redirect", `/items/${row.id}`);
+            }
+            res.sendStatus(201);
+          },
+        );
       }
     },
   );
