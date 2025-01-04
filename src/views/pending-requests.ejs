@@ -1,0 +1,12 @@
+<%- include('header') -%>
+<table id="pending-requests">
+<tr>
+	<th>Request Details</th>
+</tr>
+<% for (const request of pendingRequests) { %>
+	<tr height="80">
+		<td><%= request.borrower %> has requested to borrow <a href="/items/<%= request.item %>"><%= request.item_name %></a></td>
+	</tr>
+<% } %>
+</table>
+<%- include('footer') -%>

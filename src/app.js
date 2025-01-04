@@ -76,6 +76,13 @@ db.serialize(() => {
   db.run(
     "CREATE VIEW IF NOT EXISTS tags AS SELECT DISTINCT tag FROM ItemTags;",
   );
+  db.run(`CREATE VIEW IF NOT EXISTS pending_requests 
+		AS SELECT i.id item, u.username borrower, i.name item_name, i.owner 
+		FROM Requests r 
+		JOIN Items i ON r.item = i.id 
+		JOIN Users u ON r. user = u.id 
+		WHERE status = 'pending'
+		ORDER BY r.created_at DESC`);
   const pword = bcrypt.hashSync("admin", 10);
   db.run(
     "INSERT OR IGNORE INTO Users (id, username, password, is_admin) VALUES (1, ?, ?, 1)",
@@ -204,7 +211,18 @@ app.use((req, res, next) => {
         res.locals.isAdmin = Boolean(rows[0].is_admin);
         res.locals.loggedIn = true;
 
-        next();
+        db.get(
+          "SELECT COUNT(*) as count FROM pending_requests WHERE owner = ?",
+          res.locals.userId,
+          (err, row) => {
+            if (err) {
+              console.error("Could not get pending_requests for user", err);
+            } else {
+              res.locals.pendingRequestCount = row.count;
+            }
+            next();
+          },
+        );
       },
     );
   }
@@ -230,8 +248,22 @@ app.get("/", (_req, res) => {
   }
   res.render("layout", {
     title: "Home",
-    body: `<h1>Welcome to the Gary Library</h1><p>${links.join(" • ")}</p>`,
+    body: `<h1>Welcome to the Gary Library</h1><a href="/pending-requests">You have ${res.locals.pendingRequestCount} pending request(s)</a>`,
   });
+});
+
+app.get("/pending-requests", (_req, res) => {
+  db.all(
+    "SELECT * FROM pending_requests WHERE owner = ?",
+    res.locals.userId,
+    (err, pendingRequests) => {
+			if (err) {
+				console.error('Could not get pending requests', err);
+				return res.sendStatus(500);
+			}
+			res.render("pending-requests", { title: "Pending Requests", pendingRequests });
+		},
+  );
 });
 
 app.get("/items", (req, res) => {
