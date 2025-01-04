@@ -118,3 +118,15 @@ a:hover,
 a:focus {
   text-decoration: none;
 }
+
+form {
+	display: flex;
+	flex-direction: column;
+	width: 80%;
+	margin: auto;
+}
+
+table {
+	width: 80%;
+	margin: auto;
+}

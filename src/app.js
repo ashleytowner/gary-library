@@ -295,12 +295,14 @@ app.get("/items/:id", (req, res) => {
       const isOwner = item.owner === res.locals.userId;
       let html = `<div>
       <h1>${item.name}</h1>
-      <p>${marked.parse(item.description)}</p>
+      <p><em>Owned By ${item.owner_name}</em></p>
       <p>${
         item.available
           ? "☑ Available"
           : `☒ Unavailable (On Loan to ${item.username})`
       }</p>
+      <h2>Description</h2>
+      <p>${marked.parse(item.description)}</p>
       ${
         isOwner && !item.available
           ? `<button hx-put="/loan/${item.loan_id}/return" hx-swap="outerHTML">Mark As Returned</button>`
@@ -321,7 +323,7 @@ app.get("/items/:id", (req, res) => {
             console.error("Could not get item tags", err);
           } else if (rows.length > 0) {
             html += `${rows
-              .map((tag) => `<p>${tag.tag}: ${tag.value}</p>`)
+              .map((tag) => `<p><strong>${tag.tag}</strong>: ${tag.value}</p>`)
               .join("")}`;
           }
           db.all(
