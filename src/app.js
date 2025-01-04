@@ -302,17 +302,28 @@ app.get("/items", (req, res) => {
                         .join("")}
                     </table>
                     <p class="pagination">
-                      ${page !== 1 ? `<a href="/items?search=${search || ''}&page=${page - 1}">< prev` : "<span class='hidden'>< prev</span>"}${Array.from(
-                        { length: pageCount },
-                        (_, i) => i + 1,
-                      )
+                      ${
+                        page !== 1
+                          ? `<a href="/items?search=${search || ""}&page=${
+                              page - 1
+                            }">< prev`
+                          : "<span class='hidden'>< prev</span>"
+                      }${Array.from({ length: pageCount }, (_, i) => i + 1)
                         .map(
                           (i) =>
                             `<a href="/items/?search=${
                               search || ""
-                            }&page=${i}">${i === page ? `<strong>${i}</strong>` : i}</a>`,
+                            }&page=${i}">${
+                              i === page ? `<strong>${i}</strong>` : i
+                            }</a>`,
                         )
-                        .join("")}${!isLastPage ? `<a href="/items?search=${search || ''}&page=${page + 1}">next ></a>` : "<span class='hidden'>next ></span>"}
+                        .join("")}${
+                        !isLastPage
+                          ? `<a href="/items?search=${search || ""}&page=${
+                              page + 1
+                            }">next ></a>`
+                          : "<span class='hidden'>next ></span>"
+                      }
                     </p></div>`
                 : "<p id='item-table'>There are no items to display</p>";
             req.hxRequest
@@ -347,6 +358,44 @@ app.get("/items/create", (_req, res) => {
   });
 });
 
+app.put("/items/:id", (req, res) => {
+  const { name, description } = req.body;
+  db.run(
+    "UPDATE Items SET name = ?, description = ? WHERE id = ?",
+    name,
+    description,
+    req.params.id,
+    (err) => {
+      if (err) {
+        console.error("Could not update item", err);
+        return res.sendStatus(500);
+      }
+      res.setHeader("HX-Redirect", `/items/${req.params.id}`);
+      res.sendStatus(200);
+    },
+  );
+});
+
+app.get("/items/:id/edit", (req, res) => {
+  db.get("SELECT * FROM Items WHERE id = ?", req.params.id, (err, row) => {
+    if (err) {
+      console.error("Could not get item", err);
+      return res.sendStatus(500);
+    }
+    const form = `<form
+        hx-put="/items/${req.params.id}"
+      >
+        <label for="name">Name</label>
+        <input type="text" name="name" value="${row.name}" />
+        <label for="description">Description</label>
+        <textarea name="description">${row.description}</textarea>
+        <button type="submit">Update Item</button>
+      </form>
+    `;
+    res.render("layout", { title: "Edit Item", body: form });
+  });
+});
+
 app.get("/items/:id", (req, res) => {
   db.all(
     `SELECT i.*, l.id as loan_id, u.username
@@ -368,6 +417,7 @@ app.get("/items/:id", (req, res) => {
       const item = rows[0];
       const isOwner = item.owner === res.locals.userId;
       let html = `<div>
+      ${ isOwner ? `<a class="button-like" href="/items/${item.id}/edit">Edit Item</a>` : '' }
       <h1>${item.name}</h1>
       <p><em>Owned By ${item.owner_name}</em></p>
       <p>${
