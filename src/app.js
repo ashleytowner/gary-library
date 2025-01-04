@@ -256,7 +256,7 @@ app.get("/items", (req, res) => {
 
       const query = `SELECT * FROM v_items WHERE ${
         search ? "name LIKE ?" : "1=1"
-      } LIMIT ${PAGE_SIZE} OFFSET ?`;
+      } ORDER BY available DESC, name ASC LIMIT ${PAGE_SIZE} OFFSET ?`;
       db.all(
         query,
         search ? [`%${search}%`, offset] : [offset],
