@@ -8,6 +8,9 @@ const marked = require("marked");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
+const { config } = require("dotenv");
+
+config();
 
 const app = express();
 
@@ -94,6 +97,10 @@ app.use((req, res, next) => {
 });
 
 app.get("/logout", (req, res) => {
+  const sessionId = req.cookies["Authorization"];
+  db.run("DELETE FROM Sessions WHERE key = ?", sessionId, (err) => {
+    console.error("Failed to delete session", err);
+  });
   res.clearCookie("Authorization");
   res.redirect("/login");
 });
@@ -147,7 +154,11 @@ app.post("/login", (req, res) => {
               id,
               rows[0].id,
             );
-            res.cookie("Authorization", id, { httpOnly: true });
+            res.cookie("Authorization", id, {
+              maxAge: 86400000,
+              httpOnly: true,
+              secure: process.env.NODE_ENV !== 'develop',
+            });
           }
           res.redirect("/");
         });
@@ -163,7 +174,7 @@ app.use((req, res, next) => {
     const sessionId = req.cookies["Authorization"];
 
     db.all(
-      "SELECT user, is_admin FROM Sessions s JOIN Users u ON s.user = u.id WHERE s.key = ?",
+      "SELECT user, is_admin, created_at FROM Sessions s JOIN Users u ON s.user = u.id WHERE s.key = ?",
       sessionId,
       (err, rows) => {
         if (err) {
@@ -175,6 +186,18 @@ app.use((req, res, next) => {
         if (rows.length === 0) {
           res.sendStatus(401);
           return;
+        }
+
+        if (
+          Number(new Date(rows[0].created_at)) + 86400000 <
+          Number(new Date())
+        ) {
+          db.run("DELETE FROM Sessions WHERE key = ?", sessionId, (err) => {
+            if (err) {
+              console.error("Could not delete expired session", err);
+            }
+          });
+          return res.redirect("/logout");
         }
 
         res.locals.userId = rows[0].user;
@@ -423,7 +446,7 @@ app.put("/items/:id/image", upload.single("image"), (req, res) => {
         } else {
           res.sendStatus(200);
         }
-      }
+      },
     );
     if (oldImage) {
       fs.unlink(path.join(__dirname, `public/img/${oldImage}`), (err) => {
