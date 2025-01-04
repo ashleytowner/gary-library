@@ -2,10 +2,19 @@
 <table id="pending-requests">
 <tr>
 	<th>Request Details</th>
+	<th>Actions</th>
 </tr>
 <% for (const request of pendingRequests) { %>
-	<tr height="80">
+	<tr height="80" id="request-<%= request.id %>">
 		<td><%= request.borrower %> has requested to borrow <a href="/items/<%= request.item %>"><%= request.item_name %></a></td>
+		<td>
+			<button hx-target="#request-<%= request.id %>" hx-put="/requests/<%= request.id %>/approve">
+				Approve
+			</button>
+			<button hx-target="#request-<%= request.id %>" hx-put="/requests/<%= request.id %>/reject">
+				Reject
+			</button>
+		</td>
 	</tr>
 <% } %>
 </table>

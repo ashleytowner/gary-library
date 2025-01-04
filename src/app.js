@@ -77,12 +77,12 @@ db.serialize(() => {
     "CREATE VIEW IF NOT EXISTS tags AS SELECT DISTINCT tag FROM ItemTags;",
   );
   db.run(`CREATE VIEW IF NOT EXISTS pending_requests 
-		AS SELECT i.id item, u.username borrower, i.name item_name, i.owner 
+		AS SELECT r.id id, i.id item, u.username borrower, i.name item_name, i.owner 
 		FROM Requests r 
 		JOIN Items i ON r.item = i.id 
 		JOIN Users u ON r. user = u.id 
 		WHERE status = 'pending'
-		ORDER BY r.created_at DESC`);
+		ORDER BY r.created_at ASC`);
   const pword = bcrypt.hashSync("admin", 10);
   db.run(
     "INSERT OR IGNORE INTO Users (id, username, password, is_admin) VALUES (1, ?, ?, 1)",
@@ -257,12 +257,15 @@ app.get("/pending-requests", (_req, res) => {
     "SELECT * FROM pending_requests WHERE owner = ?",
     res.locals.userId,
     (err, pendingRequests) => {
-			if (err) {
-				console.error('Could not get pending requests', err);
-				return res.sendStatus(500);
-			}
-			res.render("pending-requests", { title: "Pending Requests", pendingRequests });
-		},
+      if (err) {
+        console.error("Could not get pending requests", err);
+        return res.sendStatus(500);
+      }
+      res.render("pending-requests", {
+        title: "Pending Requests",
+        pendingRequests,
+      });
+    },
   );
 });
 
@@ -397,12 +400,16 @@ app.get("/items/:id", (req, res) => {
               if (err) {
                 console.error("Could not fetch requests for item", err);
               }
+              const isRequested = requests.some(
+                (request) => request.user === res.locals.userId,
+              );
               res.render("item", {
                 title: item.name,
                 isOwner,
                 item,
                 tags,
                 requests,
+                isRequested,
                 md: marked.parse,
               });
             },
@@ -506,8 +513,7 @@ app.post("/items/:id/request", (req, res) => {
               res.sendStatus(500);
               return;
             }
-            res.setHeader("HX-Refresh", "true");
-            res.sendStatus(201);
+            res.status(201).send("Requested!");
           },
         );
       },
@@ -803,7 +809,6 @@ app.get("/sessions", isAdmin, (req, res) => {
   db.all(
     "SELECT s.*, u.username FROM Sessions s JOIN Users u ON s.user = u.id",
     (err, rows) => {
-      console.log(rows);
       if (err) {
         console.error("Could not fetch sessions", err);
         return res.sendStatus(500);

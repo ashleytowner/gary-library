@@ -23,7 +23,7 @@
   <% if (isOwner && !item.available) { %>
     <button hx-put="/loan/<%= item.loan_id %>/return" hx-swap="outerHTML">Mark As Returned</button>
   <% } %>
-  <% if (!isOwner) { %>
+  <% if (!isOwner && !isRequested) { %>
     <button hx-post="/items/<%= item.id %>/request">Request to Borrow</button>
   <% } %>
 </div>
