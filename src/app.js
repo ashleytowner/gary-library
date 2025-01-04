@@ -157,7 +157,7 @@ app.post("/login", (req, res) => {
             res.cookie("Authorization", id, {
               maxAge: 86400000,
               httpOnly: true,
-              secure: process.env.NODE_ENV !== 'develop',
+              secure: process.env.NODE_ENV !== "develop",
             });
           }
           res.redirect("/");
@@ -236,13 +236,36 @@ app.get("/", (_req, res) => {
 
 app.get("/items", (req, res) => {
   const { search } = req.query;
-  const query = `SELECT * FROM v_items WHERE ${search ? "name LIKE ?" : "1=1"}`;
-  db.all(query, search ? [`%${search}%`] : [], (err, rows) => {
-    if (err) {
-      console.error("Error getting items", err);
-      res.sendStatus(500);
-    } else {
-      const searchForm = `<form action="/items" method="GET">
+
+  const page = req.query.page ? Number(req.query.page) : 1;
+  const PAGE_SIZE = 25;
+
+  db.get(
+    `SELECT COUNT(*) as total FROM v_items WHERE ${
+      search ? "name LIKE ?" : "1=1"
+    }`,
+    (err, row) => {
+      if (err) {
+        console.error("There was an error counting results", err);
+        return res.sendStatus(500);
+      }
+      const { total } = row;
+      const isLastPage = total <= page * PAGE_SIZE;
+      const offset = (page - 1) * PAGE_SIZE;
+      const pageCount = Math.ceil(total / PAGE_SIZE);
+
+      const query = `SELECT * FROM v_items WHERE ${
+        search ? "name LIKE ?" : "1=1"
+      } LIMIT ${PAGE_SIZE} OFFSET ?`;
+      db.all(
+        query,
+        search ? [`%${search}%`, offset] : [offset],
+        (err, rows) => {
+          if (err) {
+            console.error("Error getting items", err);
+            res.sendStatus(500);
+          } else {
+            const searchForm = `<form action="/items" method="GET">
         <label for="search">Search</label>
         <input
           type="search"
@@ -254,41 +277,58 @@ app.get("/items", (req, res) => {
         />
       </form>`;
 
-      const table =
-        rows.length > 0
-          ? `<table id="item-table">
-          <tr>
-            <th>Image</th>
-            <th>Name</th>
-            <th>Owner</th>
-            <th>Available</th>
-          </tr>
-          ${rows
-            .map(
-              (row) =>
-                `<tr><td width=90>${
-                  row.image ? `<img width=80 src="/img/${row.image}" />` : ""
-                }</td><td><a href="/items/${row.id}">${row.name}</a></td><td>${
-                  row.owner_name
-                }</td><td>${
-                  row.available ? "☑ Available" : "☒ Unavailable"
-                }</td></tr>`,
-            )
-            .join("")}
-        </table>
-      </form>`
-          : "<p>There are no items to display</p>";
-      req.hxRequest
-        ? res.send(table)
-        : res.render("layout", {
-            title: "Items",
-            body:
-              '<h1>Library Items</h1><p>Here you can view & search through all the items in the library</p><a class="button-like" href="/items/create">Add Item</a>' +
-              searchForm +
-              table,
-          });
-    }
-  });
+            const table =
+              rows.length > 0
+                ? `<div id="item-table"><table>
+                      <tr>
+                        <th>Image</th>
+                        <th>Name</th>
+                        <th>Owner</th>
+                        <th>Available</th>
+                      </tr>
+                      ${rows
+                        .map(
+                          (row) =>
+                            `<tr><td width=90>${
+                              row.image
+                                ? `<img width=80 src="/img/${row.image}" />`
+                                : ""
+                            }</td><td><a href="/items/${row.id}">${
+                              row.name
+                            }</a></td><td>${row.owner_name}</td><td>${
+                              row.available ? "☑ Available" : "☒ Unavailable"
+                            }</td></tr>`,
+                        )
+                        .join("")}
+                    </table>
+                    <p class="pagination">
+                      ${page !== 1 ? `<a href="/items?search=${search || ''}&page=${page - 1}">< prev` : "<span class='hidden'>< prev</span>"}${Array.from(
+                        { length: pageCount },
+                        (_, i) => i + 1,
+                      )
+                        .map(
+                          (i) =>
+                            `<a href="/items/?search=${
+                              search || ""
+                            }&page=${i}">${i === page ? `<strong>${i}</strong>` : i}</a>`,
+                        )
+                        .join("")}${!isLastPage ? `<a href="/items?search=${search || ''}&page=${page + 1}">next ></a>` : "<span class='hidden'>next ></span>"}
+                    </p></div>`
+                : "<p id='item-table'>There are no items to display</p>";
+            req.hxRequest
+              ? res.send(table)
+              : res.render("layout", {
+                  title: "Items",
+                  body:
+                    '<h1>Library Items</h1><p>Here you can view & search through all the items in the library</p><a class="button-like" href="/items/create">Add Item</a>' +
+                    searchForm +
+                    table,
+                });
+          }
+        },
+      );
+    },
+  );
 });
 
 app.get("/items/create", (_req, res) => {

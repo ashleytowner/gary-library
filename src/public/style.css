@@ -130,3 +130,13 @@ table {
 	width: 80%;
 	margin: auto;
 }
+
+.pagination {
+	display: flex;
+	justify-content: center;
+	gap: 2rem;
+}
+
+.hidden {
+	visibility: hidden;
+}
