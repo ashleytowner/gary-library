@@ -1,0 +1,63 @@
+<%- include('header') -%>
+<div>
+  <% if (isOwner) { %>
+    <a class="button-like" href="/items/<%= item.id %>/edit">Edit Item</a>
+  <% } %>
+  <h1><%= item.name %></h1>
+  <p><em>Owned By <%= item.owner_name %></em></p>
+  <p>
+    <%= item.available ? "☑ Available" : `☒ Unavailable (On Loan to ${item.username})` %>
+  </p>
+  <% if (item.image) { %>
+    <img height=150 src="/img/<%= item.image %>" />
+  <% } %>
+  <% if (isOwner) { %>
+    <form hx-put="/items/<%= item.id %>/image" enctype="multipart/form-data">
+      <label for="image">Image (JPEG & WebP only)</label>
+      <input type="file" name="image" accept=".jpeg,.jpg,.webp" />
+      <button type="Submit">Change Image</button>
+    </form>
+  <% } %>
+  <h2>Description</h2>
+	<p><%- md(item.description) %></p>
+  <% if (isOwner && !item.available) { %>
+    <button hx-put="/loan/<%= item.loan_id %>/return" hx-swap="outerHTML">Mark As Returned</button>
+  <% } %>
+  <% if (!isOwner) { %>
+    <button hx-post="/items/<%= item.id %>/request">Request to Borrow</button>
+  <% } %>
+</div>
+
+<h2>Tags</h2>
+<button hx-get="/items/<%= item.id %>/tag" hx-select="#page_body > *" hx-swap="outerHTML">Add Tag</button>
+<% if (tags.length > 0) { %>
+	<% for (const tag of tags) { %>
+		<p><strong><%= tag.tag %></strong>: <%= tag.value %>
+	<% } %>
+<% } %>
+
+<% if (isOwner && requests.length > 0) { %>
+  <h2>Requests</h2>
+  <table>
+    <tr>
+      <th>User</th>
+      <th>Date</th>
+      <th>Actions</th>
+    </tr>
+    <% for (const row of requests) { %>
+      <tr id="request-<%= row.id %>">
+        <td><%= row.username %></td>
+        <td><%= row.created_at %></td>
+        <td>
+          <button hx-target="#request-<%= row.id %>" hx-put="/requests/<%= row.id %>/approve">
+            Approve
+          </button>
+          <button hx-target="#request-<%= row.id %>" hx-put="/requests/<%= row.id %>/reject">
+            Reject
+          </button>
+        </td>
+      </tr>
+    <% } %>
+  </table>
+<% } %>
+<%- include('footer') -%>

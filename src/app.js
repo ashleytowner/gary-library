@@ -397,7 +397,7 @@ app.get("/items/:id/edit", (req, res) => {
 });
 
 app.get("/items/:id", (req, res) => {
-  db.all(
+  db.get(
     `SELECT i.*, l.id as loan_id, u.username
     FROM v_items i 
     LEFT JOIN Loans l ON i.id = l.item 
@@ -405,100 +405,38 @@ app.get("/items/:id", (req, res) => {
     WHERE i.id = ? 
     ORDER BY l.loaned_at DESC;`,
     req.params.id,
-    (err, rows) => {
+    (err, item) => {
       if (err) {
         console.error("Could not fetch item", err);
         return;
       }
-      if (rows.length === 0) {
+      if (!item) {
         res.sendStatus(404);
         return;
       }
-      const item = rows[0];
       const isOwner = item.owner === res.locals.userId;
-      let html = `<div>
-      ${ isOwner ? `<a class="button-like" href="/items/${item.id}/edit">Edit Item</a>` : '' }
-      <h1>${item.name}</h1>
-      <p><em>Owned By ${item.owner_name}</em></p>
-      <p>${
-        item.available
-          ? "☑ Available"
-          : `☒ Unavailable (On Loan to ${item.username})`
-      }</p>
-      ${item.image ? `<img height=150 src="/img/${item.image}" />` : ""}
-      ${
-        isOwner
-          ? `
-              <form hx-put="/items/${item.id}/image" enctype="multipart/form-data">
-                <label for="image">Image (JPEG & WebP only)</label>
-                <input type="file" name="image" accept=".jpeg,.jpg,.webp" />
-                <button type="Submit">Change Image</button>
-              </form>
-            `
-          : ""
-      }
-      <h2>Description</h2>
-      <p>${marked.parse(item.description)}</p>
-      ${
-        isOwner && !item.available
-          ? `<button hx-put="/loan/${item.loan_id}/return" hx-swap="outerHTML">Mark As Returned</button>`
-          : ""
-      }
-      ${
-        !isOwner
-          ? `<button hx-post="/items/${item.id}/request">Request to Borrow</button>`
-          : ""
-      }
-    </div>`;
       db.all(
         "SELECT * FROM ItemTags WHERE item = ?",
         req.params.id,
-        (err, rows) => {
-          html += `<h2>Tags</h2><button hx-get="/items/${req.params.id}/tag" hx-select="#page_body > *" hx-swap="outerHTML">Add Tag</button>`;
+        (err, tags) => {
           if (err) {
             console.error("Could not get item tags", err);
-          } else if (rows.length > 0) {
-            html += `${rows
-              .map((tag) => `<p><strong>${tag.tag}</strong>: ${tag.value}</p>`)
-              .join("")}`;
           }
           db.all(
             'SELECT r.*, u.username FROM Requests r JOIN Users u ON r.user = u.id WHERE item = ? AND status = "pending" ORDER BY created_at DESC',
             item.id,
-            (err, rows) => {
+            (err, requests) => {
               if (err) {
                 console.error("Could not fetch requests for item", err);
-              } else if (rows.length > 0) {
-                html += `<h2>Requests</h2>
-            <table>
-              <tr>
-                <th>User</th>
-                <th>Date</th>
-                ${isOwner ? "<th>Actions</th>" : ""}
-              </tr>
-              ${rows
-                .map(
-                  (row) =>
-                    `<tr id="request-${row.id}">
-                    <td>${row.username}</td>
-                    <td>${row.created_at}</td>
-                    ${
-                      isOwner
-                        ? `<td>
-                            <button hx-target="#request-${row.id}" hx-put="/requests/${row.id}/approve">
-                              Approve</button
-                            ><button hx-target="#request-${row.id}" hx-put="/requests/${row.id}/reject">
-                              Reject
-                            </button>
-                          </td>`
-                        : ""
-                    }
-                  </tr>`,
-                )
-                .join("")}
-            </table>`;
               }
-              res.render("layout", { title: item.name, body: html });
+              res.render("item", {
+                title: item.name,
+                isOwner,
+                item,
+                tags,
+                requests,
+                md: marked.parse,
+              });
             },
           );
         },
