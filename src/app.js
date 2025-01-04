@@ -5,14 +5,20 @@ const cookieParser = require("cookie-parser");
 const crypto = require("crypto");
 const bcrypt = require("bcrypt");
 const marked = require("marked");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
 
 const app = express();
+
+const upload = multer({ dest: path.join(__dirname, "public/img") });
 
 db.serialize(() => {
   db.run(`CREATE TABLE IF NOT EXISTS Items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     description TEXT,
+    image TEXT,
     owner INTEGER NOT NULL,
     FOREIGN KEY (owner) REFERENCES Users(id)
   )`);
@@ -58,12 +64,12 @@ db.serialize(() => {
     JOIN Users u ON i.owner = u.id
     LEFT JOIN Loans l ON i.id = l.item AND l.returned_at IS NULL;`);
   db.run(`CREATE TABLE IF NOT EXISTS ItemTags (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		item INTEGER NOT NULL,
-		tag TEXT NOT NULL,
-		value TEXT NOT NULL,
-		FOREIGN KEY (item) REFERENCES Items(id)
-	)`);
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    item INTEGER NOT NULL,
+    tag TEXT NOT NULL,
+    value TEXT NOT NULL,
+    FOREIGN KEY (item) REFERENCES Items(id)
+  )`);
   db.run(
     "CREATE VIEW IF NOT EXISTS tags AS SELECT DISTINCT tag FROM ItemTags;",
   );
@@ -79,7 +85,7 @@ app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 app.set("view engine", "ejs");
 app.set("views", "src/views");
-app.use(express.static("src/public"));
+app.use(express.static(path.join(__dirname, "public")));
 
 app.use((req, res, next) => {
   res.locals.loggedIn = false;
@@ -229,6 +235,7 @@ app.get("/items", (req, res) => {
         rows.length > 0
           ? `<table id="item-table">
           <tr>
+            <th>Image</th>
             <th>Name</th>
             <th>Owner</th>
             <th>Available</th>
@@ -236,7 +243,9 @@ app.get("/items", (req, res) => {
           ${rows
             .map(
               (row) =>
-                `<tr><td><a href="/items/${row.id}">${row.name}</a></td><td>${
+                `<tr><td width=90>${
+                  row.image ? `<img width=80 src="/img/${row.image}" />` : ""
+                }</td><td><a href="/items/${row.id}">${row.name}</a></td><td>${
                   row.owner_name
                 }</td><td>${
                   row.available ? "☑ Available" : "☒ Unavailable"
@@ -263,9 +272,11 @@ app.get("/items/create", (_req, res) => {
   res.render("layout", {
     title: "Create Item",
     body: `
-    <form hx-boost="true" method="POST" action="/items">
+    <form hx-boost="true" method="POST" action="/items" enctype="multipart/form-data">
       <label for="name">Name</label>
       <input type="text" name="name" />
+      <label for="image">Image (JPEG & WebP only)</label>
+      <input type="file" name="image" accept=".jpeg,.jpg,.webp" />
       <label for="description">Description</label>
       <textarea name="description"></textarea>
       <button type="submit">Create new Item</button>
@@ -301,6 +312,18 @@ app.get("/items/:id", (req, res) => {
           ? "☑ Available"
           : `☒ Unavailable (On Loan to ${item.username})`
       }</p>
+      ${item.image ? `<img height=150 src="/img/${item.image}" />` : ""}
+      ${
+        isOwner
+          ? `
+              <form hx-put="/items/${item.id}/image" enctype="multipart/form-data">
+                <label for="image">Image (JPEG & WebP only)</label>
+                <input type="file" name="image" accept=".jpeg,.jpg,.webp" />
+                <button type="Submit">Change Image</button>
+              </form>
+            `
+          : ""
+      }
       <h2>Description</h2>
       <p>${marked.parse(item.description)}</p>
       ${
@@ -369,6 +392,49 @@ app.get("/items/:id", (req, res) => {
       );
     },
   );
+});
+
+app.put("/items/:id/image", upload.single("image"), (req, res) => {
+  if (!req.file) {
+    return res.status(400).send("File is Required");
+  }
+  if (req.file) {
+    if (
+      req.file.mimetype !== "image/jpeg" &&
+      req.file.mimetype !== "image/webp"
+    ) {
+      return res.status(400).send("Image must be either a jpeg or webp");
+    }
+  }
+  db.get("SELECT image FROM Items WHERE id = ?", req.params.id, (err, row) => {
+    if (err) {
+      console.error("Could not get item", err);
+      return res.sendStatus(500);
+    }
+    const oldImage = row.image;
+    db.run(
+      "UPDATE Items SET image = ? WHERE id = ?",
+      req.file.filename,
+      req.params.id,
+      (err) => {
+        if (err) {
+          console.error("Could not set new image", err);
+          res.sendStatus(500);
+        } else {
+          res.sendStatus(200);
+        }
+      }
+    );
+    if (oldImage) {
+      fs.unlink(path.join(__dirname, `public/img/${oldImage}`), (err) => {
+        if (err) {
+          console.error("Error Deleting File", oldImage);
+        } else {
+          console.log("Successfully deleted file", oldImage);
+        }
+      });
+    }
+  });
 });
 
 app.post("/items/:id/request", (req, res) => {
@@ -549,13 +615,24 @@ app.put("/requests/:id/reject", (req, res) => {
   );
 });
 
-app.post("/items", (req, res) => {
+app.post("/items", upload.single("image"), (req, res) => {
   const { name, description } = req.body;
+  let image = "";
+  if (req.file) {
+    if (
+      req.file.mimetype !== "image/jpeg" &&
+      req.file.mimetype !== "image/webp"
+    ) {
+      return res.status(400).send("Image must be either a jpeg or webp");
+    }
+    image = req.file.filename;
+  }
   db.run(
-    "INSERT INTO Items (name, description, owner) VALUES (?, ?, ?)",
+    "INSERT INTO Items (name, description, owner, image) VALUES (?, ?, ?, ?)",
     name,
     description,
     res.locals.userId,
+    image,
     (err) => {
       if (err) {
         console.error("Failed to add Item", err);
