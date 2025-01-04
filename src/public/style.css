@@ -140,3 +140,8 @@ table {
 .hidden {
 	visibility: hidden;
 }
+
+.navbar {
+	display: flex;
+	gap: 2rem;
+}
