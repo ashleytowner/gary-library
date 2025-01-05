@@ -1,0 +1,18 @@
+<%- include('header') -%>
+<form
+	hx-<%= method %>="/items<% if (item.id) { %><%= "/" + item.id -%> <% } %>" 
+	<% if (showImage) { %>
+	enctype="multipart/form-data"
+	<% } %>
+>
+	<label for="name">Name</label>
+	<input type="text" name="name" <% if (item.name) { %>value="<%= item.name %>" <% } %> />
+	<% if (showImage) { %>
+		<label for="image">Image (JPEG & WebP only)</label>
+		<input type="file" name="image" accept=".jpeg,.jpg,.webp" />
+	<% } %>
+	<label for="description">Description</label>
+	<textarea rows="15" name="description"><%= item.description || '' -%></textarea>
+	<button type="submit">Save Item</button>
+</form>
+<%- include('footer') -%>

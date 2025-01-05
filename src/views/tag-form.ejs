@@ -1,0 +1,23 @@
+<%- include('header') -%>
+<form hx-post="/tags">
+  <datalist
+    id="tag-names"
+    hx-get="/tags/options"
+    hx-trigger="load"
+  ></datalist>
+  <datalist id="tag-values"></datalist>
+  <input name="item" value="<%= itemId -%>" hidden />
+  <label for="tag">Tag Name</label>
+  <input
+    list="tag-names"
+    type="text"
+    name="tag"
+    hx-get="/tags/values/options"
+    hx-trigger="change"
+    hx-target="#tag-values"
+  />
+  <label for="value">Tag Value</label>
+  <input list="tag-values" name="value" />
+  <button type="Submit">Tag Item</button>
+</form>
+<%- include('footer') -%>

@@ -77,12 +77,12 @@ db.serialize(() => {
     "CREATE VIEW IF NOT EXISTS tags AS SELECT DISTINCT tag FROM ItemTags;",
   );
   db.run(`CREATE VIEW IF NOT EXISTS pending_requests 
-		AS SELECT r.id id, i.id item, u.username borrower, i.name item_name, i.owner 
-		FROM Requests r 
-		JOIN Items i ON r.item = i.id 
-		JOIN Users u ON r. user = u.id 
-		WHERE status = 'pending'
-		ORDER BY r.created_at ASC`);
+    AS SELECT r.id id, i.id item, u.username borrower, i.name item_name, i.owner 
+    FROM Requests r 
+    JOIN Items i ON r.item = i.id 
+    JOIN Users u ON r. user = u.id 
+    WHERE status = 'pending'
+    ORDER BY r.created_at ASC`);
   const pword = bcrypt.hashSync("admin", 10);
   db.run(
     "INSERT OR IGNORE INTO Users (id, username, password, is_admin) VALUES (1, ?, ?, 1)",
@@ -92,10 +92,10 @@ db.serialize(() => {
 });
 
 app.use(cookieParser());
-app.use(express.urlencoded({ extended: true }));
 app.set("view engine", "ejs");
 app.set("views", "src/views");
 app.use(express.static(path.join(__dirname, "public")));
+app.use(express.urlencoded({ extended: true }));
 
 app.use((req, res, next) => {
   res.locals.loggedIn = false;
@@ -234,21 +234,12 @@ app.use((req, _res, next) => {
 });
 
 app.get("/", (_req, res) => {
-  const links = [
-    '<a href="/items">View Items</a>',
-    '<a href="/items/create">Add an Item</a>',
-  ];
-  if (res.locals.isAdmin) {
-    links.push(
-      ...[
-        '<a href="/users">View Users</a>',
-        '<a href="/users/create">Add a user</a>',
-      ],
-    );
-  }
   res.render("layout", {
     title: "Home",
-    body: `<h1>Welcome to the Gary Library</h1><a href="/pending-requests">You have ${res.locals.pendingRequestCount} pending request(s)</a>`,
+    body: `<h1>Welcome to the Gary Library</h1>
+      <a href="/pending-requests"
+        >You have ${res.locals.pendingRequestCount} pending request(s)</a
+      >`,
   });
 });
 
@@ -270,7 +261,7 @@ app.get("/pending-requests", (_req, res) => {
 });
 
 app.get("/items", (req, res) => {
-	const search = (req.query.search || '').trim();
+  const search = (req.query.search || "").trim();
   const searchTerms = search ? [search, ...search.split(" ")] : [];
 
   const page = req.query.page ? Number(req.query.page) : 1;
@@ -281,12 +272,12 @@ app.get("/items", (req, res) => {
     ? searchTerms
         .map((_) => {
           return `
-			SELECT i.* FROM v_items i WHERE i.name LIKE ?
-			UNION ALL
-			SELECT i.* FROM v_items i WHERE i.description LIKE ?
-			UNION ALL
-			SELECT i.* FROM v_items i LEFT JOIN ItemTags it ON i.id = it.item WHERE it.value LIKE ?
-		`;
+            SELECT i.* FROM v_items i WHERE i.name LIKE ?
+            UNION ALL
+            SELECT i.* FROM v_items i WHERE i.description LIKE ?
+            UNION ALL
+            SELECT i.* FROM v_items i LEFT JOIN ItemTags it ON i.id = it.item WHERE it.value LIKE ?
+          `;
         })
         .join(" UNION ALL ")
     : "SELECT * FROM v_items";
@@ -326,18 +317,11 @@ app.get("/items", (req, res) => {
 });
 
 app.get("/items/create", (_req, res) => {
-  res.render("layout", {
+  res.render("edit-item", {
     title: "Create Item",
-    body: `
-    <form hx-boost="true" method="POST" action="/items" enctype="multipart/form-data">
-      <label for="name">Name</label>
-      <input type="text" name="name" />
-      <label for="image">Image (JPEG & WebP only)</label>
-      <input type="file" name="image" accept=".jpeg,.jpg,.webp" />
-      <label for="description">Description</label>
-      <textarea name="description"></textarea>
-      <button type="submit">Create new Item</button>
-    </form>`,
+    showImage: true,
+    method: "post",
+    item: {},
   });
 });
 
@@ -365,17 +349,12 @@ app.get("/items/:id/edit", (req, res) => {
       console.error("Could not get item", err);
       return res.sendStatus(500);
     }
-    const form = `<form
-        hx-put="/items/${req.params.id}"
-      >
-        <label for="name">Name</label>
-        <input type="text" name="name" value="${row.name}" />
-        <label for="description">Description</label>
-        <textarea name="description">${row.description}</textarea>
-        <button type="submit">Update Item</button>
-      </form>
-    `;
-    res.render("layout", { title: "Edit Item", body: form });
+    res.render("edit-item", {
+      title: "Edit Item",
+      item: row,
+      showImage: false,
+      method: "put",
+    });
   });
 });
 
@@ -482,6 +461,7 @@ app.post("/items/:id/request", (req, res) => {
     //   .status(400)
     //   .send("You must specify an action, either Borrow or Consult");
     // return;
+    // TODO: Allow multiple actions
     action = "borrow";
   }
   db.get("SELECT * FROM items WHERE id = ?", req.params.id, (err, item) => {
@@ -695,28 +675,7 @@ app.post("/items", upload.single("image"), (req, res) => {
 });
 
 app.get("/items/:id/tag", (req, res) => {
-  const html = `<form hx-post="/tags">
-    <datalist
-      id="tag-names"
-      hx-get="/tags/options"
-      hx-trigger="load"
-    ></datalist>
-    <datalist id="tag-values"></datalist>
-    <input name="item" value="${req.params.id}" hidden />
-    <label for="tag">Tag Name</label>
-    <input
-      list="tag-names"
-      type="text"
-      name="tag"
-      hx-get="/tags/values/options"
-      hx-trigger="change"
-      hx-target="#tag-values"
-    />
-    <label for="value">Tag Value</label>
-    <input list="tag-values" name="value" />
-    <button type="Submit">Tag Item</button>
-  </form>`;
-  res.render("layout", { title: "Tag Item", body: html });
+  res.render("tag-form", { title: "Tag Item", itemId: req.params.id });
 });
 
 app.get("/tags/options", (req, res) => {
@@ -934,8 +893,8 @@ app.delete("/users/:id", isAdmin, (req, res) => {
   res.sendStatus(201);
 });
 
-app.listen(1234, () => {
-  console.log("App listening on port 1234");
+app.listen(process.env.PORT, () => {
+  console.log(`App listening on port ${process.env.PORT}`);
 });
 
 process.on("SIGINT", () => {
