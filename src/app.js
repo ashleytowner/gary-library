@@ -270,47 +270,59 @@ app.get("/pending-requests", (_req, res) => {
 });
 
 app.get("/items", (req, res) => {
-  const { search } = req.query;
+	const search = (req.query.search || '').trim();
+  const searchTerms = search ? [search, ...search.split(" ")] : [];
 
   const page = req.query.page ? Number(req.query.page) : 1;
   const PAGE_SIZE = 25;
+  const offset = (page - 1) * PAGE_SIZE;
 
-  db.get(
-    `SELECT COUNT(*) as total FROM v_items WHERE ${
-      search ? "name LIKE ?" : "1=1"
-    }`,
-    (err, row) => {
+  const subquery = search
+    ? searchTerms
+        .map((_) => {
+          return `
+			SELECT i.* FROM v_items i WHERE i.name LIKE ?
+			UNION ALL
+			SELECT i.* FROM v_items i WHERE i.description LIKE ?
+			UNION ALL
+			SELECT i.* FROM v_items i LEFT JOIN ItemTags it ON i.id = it.item WHERE it.value LIKE ?
+		`;
+        })
+        .join(" UNION ALL ")
+    : "SELECT * FROM v_items";
+
+  const mainQuery = `SELECT COUNT(id) count, * FROM (${subquery}) GROUP BY id ORDER BY count DESC, name ASC`;
+
+  const countQuery = `SELECT COUNT(*) total FROM (${mainQuery})`;
+
+  const limitedQuery = `SELECT * FROM (${mainQuery}) LIMIT ${PAGE_SIZE} OFFSET ?`;
+
+  const parameters = search
+    ? searchTerms.map((term) => [`%${term}%`, `%${term}%`, `%${term}%`]).flat()
+    : [];
+
+  db.get(countQuery, ...parameters, (err, row) => {
+    if (err) {
+      console.error("Could not count results", err);
+      return res.sendStatus(500);
+    }
+    const { total } = row;
+    const pageCount = Math.ceil(total / PAGE_SIZE);
+
+    db.all(limitedQuery, ...parameters, offset, (err, items) => {
       if (err) {
-        console.error("There was an error counting results", err);
+        console.error("Error getting items", err);
         return res.sendStatus(500);
       }
-      const { total } = row;
-      const offset = (page - 1) * PAGE_SIZE;
-      const pageCount = Math.ceil(total / PAGE_SIZE);
-
-      const query = `SELECT * FROM v_items WHERE ${
-        search ? "name LIKE ?" : "1=1"
-      } ORDER BY available DESC, name ASC LIMIT ${PAGE_SIZE} OFFSET ?`;
-      db.all(
-        query,
-        search ? [`%${search}%`, offset] : [offset],
-        (err, rows) => {
-          if (err) {
-            console.error("Error getting items", err);
-            res.sendStatus(500);
-          } else {
-            res.render("item-list", {
-              title: "Items",
-              items: rows,
-              search,
-              page,
-              pageCount,
-            });
-          }
-        },
-      );
-    },
-  );
+      res.render("item-list", {
+        title: "Items",
+        items,
+        search,
+        page,
+        pageCount,
+      });
+    });
+  });
 });
 
 app.get("/items/create", (_req, res) => {
