@@ -9,7 +9,9 @@
     <%= item.available ? "☑ Available" : `☒ Unavailable (On Loan to ${item.username})` %>
   </p>
   <% if (item.image) { %>
-    <img height=150 src="/img/<%= item.image %>" />
+		<a class="item-image-wrapper" href="/maximised/<%= item.image %>">
+			<img height=150 src="/img/<%= item.image %>" />
+		</a>
   <% } %>
   <% if (isOwner) { %>
     <form hx-put="/items/<%= item.id %>/image" enctype="multipart/form-data">

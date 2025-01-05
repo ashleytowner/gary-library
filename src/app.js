@@ -714,6 +714,11 @@ app.get("/tags/values/options", (req, res) => {
   );
 });
 
+app.get('/maximised/:filename', (req, res) => {
+	const { filename } = req.params;
+	res.render('maximised', { title: 'Maximised Image', filename });
+});
+
 app.post("/tags", (req, res) => {
   const { item, tag, value } = req.body;
   if (!item) {
