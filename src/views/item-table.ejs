@@ -1,0 +1,30 @@
+<table>
+	<tr>
+		<th>Image</th>
+		<th>Name</th>
+		<th>Owner</th>
+		<th>Available</th>
+	</tr>
+	<% for (const item of items) { %>
+		<tr>
+			<td width="90">
+				<% if (item.image) { %>
+					<img width="80" src="/img/<%= item.image %>" />
+				<% } %>
+			</td>
+			<td>
+				<a href="/items/<%= item.id %>"><%= item.name %></a>
+			</td>
+			<td>
+				<%= item.owner_name %>
+			</td>
+			<td>
+				<% if (item.available) { %>
+					<span>☑ Available</span>
+				<% } else { %>
+					<span>☒ Unavailable</span>
+				<% } %>
+			</td>
+		</tr>
+	<% } %>
+</table>

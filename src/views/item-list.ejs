@@ -15,36 +15,7 @@
 		/>
 	</form>
 	<div id="item-table">
-		<table>
-			<tr>
-				<th>Image</th>
-				<th>Name</th>
-				<th>Owner</th>
-				<th>Available</th>
-			</tr>
-			<% for (const item of items) { %>
-				<tr>
-					<td width="90">
-						<% if (item.image) { %>
-							<img width="80" src="/img/<%= item.image %>" />
-						<% } %>
-					</td>
-					<td>
-						<a href="/items/<%= item.id %>"><%= item.name %></a>
-					</td>
-					<td>
-						<%= item.owner_name %>
-					</td>
-					<td>
-						<% if (item.available) { %>
-							<span>☑ Available</span>
-						<% } else { %>
-							<span>☒ Unavailable</span>
-						<% } %>
-					</td>
-				</tr>
-			<% } %>
-		</table>
+		<%- include('item-table') -%>
 		<p class="pagination">
 			<a href="/items?search=<%= search %>&page=<%= page - 1 %>" <% if(page === 1) { %>class="hidden"<% } %>>&lt; prev</a>
 			<% for (const pageNum of Array.from({ length: pageCount }, (_, i) => i + 1)) { %>

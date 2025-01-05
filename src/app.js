@@ -760,15 +760,17 @@ app.get("/profile", (_req, res) => {
       res.sendStatus(404);
       return;
     }
-    res.render("layout", {
-      title: "Profile",
-      body: `<h1>Hello, ${row.username}</h1>
-        <form hx-put="/users/update-password">
-          <label for="new_password">New Password</label>
-          <input type="password" name="new_password" />
-          <button type="submit">Change Password</button>
-        </form>`,
-    });
+		db.all("SELECT * FROM v_items WHERE owner = ?", res.locals.userId, (err, rows) => {
+			if (err) {
+				console.error('Could not get items', err);
+				return res.sendStatus(500);
+			}
+			res.render("profile", {
+				title: "Profile",
+				username: row.username,
+				items: rows
+			});
+		});
   });
 });
 
