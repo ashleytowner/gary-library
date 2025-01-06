@@ -1,19 +1,22 @@
 <%- include('header') -%>
 <div>
-  <% if (isOwner) { %>
-    <a class="button-like" href="/items/<%= item.id %>/edit">Edit Item</a>
-  <% } %>
   <h1><%= sanitize(item.name) %></h1>
-  <p><em>Owned By <%= sanitize(item.owner_name) %></em></p>
-  <p>
-    <%= item.available ? "☑ Available" : `☒ Unavailable (On Loan to ${sanitize(item.username)})` %>
+  <p style="display: flex; gap: 2rem; align-items: center;">
+    <span><%= item.available ? "☑ Available" : `☒ Unavailable (On Loan to ${sanitize(item.username)})` %></span>
+		<span><em>Owned By <%= sanitize(item.owner_name) %></em></span>
+		<% if (isOwner) { %>
+			<a class="button-like" href="/items/<%= item.id %>/edit">Edit Item</a>
+		<% } %>
+		<% if (!isOwner && !isRequested) { %>
+			<button hx-post="/items/<%= item.id %>/request">Request to Borrow</button>
+		<% } %>
   </p>
   <% if (item.image) { %>
-		<a class="item-image-wrapper" href="/maximised/<%= item.image %>">
+		<a style="float: right" class="item-image-wrapper" href="/maximised/<%= item.image %>">
 			<img height=150 src="/img/<%= item.image %>" />
 		</a>
   <% } %>
-  <% if (isOwner) { %>
+  <% if (false && isOwner) { %>
     <form hx-put="/items/<%= item.id %>/image" enctype="multipart/form-data">
       <label for="image">Image (JPEG & WebP only)</label>
       <input type="file" name="image" accept=".jpeg,.jpg,.webp" />
@@ -25,18 +28,16 @@
   <% if (isOwner && !item.available) { %>
     <button hx-put="/loan/<%= item.loan_id %>/return" hx-swap="outerHTML">Mark As Returned</button>
   <% } %>
-  <% if (!isOwner && !isRequested) { %>
-    <button hx-post="/items/<%= item.id %>/request">Request to Borrow</button>
-  <% } %>
 </div>
 
 <h2>Tags</h2>
-<button hx-get="/items/<%= item.id %>/tag" hx-select="#page_body > *" hx-swap="outerHTML">Add Tag</button>
 <% if (tags.length > 0) { %>
 	<% for (const tag of tags) { %>
 		<p><strong><%= sanitize(tag.tag) %></strong>: <%= sanitize(tag.value) %>
 	<% } %>
 <% } %>
+<br />
+<button hx-get="/items/<%= item.id %>/tag" hx-select="#page_body > *" hx-swap="outerHTML">Add Tag</button>
 
 <% if (isOwner && requests.length > 0) { %>
   <h2>Requests</h2>

@@ -64,6 +64,10 @@ h6 {
   font-style: normal;
 }
 
+h1 {
+	border-bottom: 1px solid #ddd;
+}
+
 table {
   border-spacing: 0;
 }
@@ -170,4 +174,40 @@ table {
 
 #page_body {
 	position: relative;
+	margin: auto;
+}
+
+/* Extra small devices (phones, 600px and down) */
+@media only screen and (max-width: 600px) {
+	#page_body {
+		width: 100%;
+	}
+}
+
+/* Small devices (portrait tablets and large phones, 600px and up) */
+@media only screen and (min-width: 600px) {
+	#page_body {
+		width: 100%;
+	}
+}
+
+/* Medium devices (landscape tablets, 768px and up) */
+@media only screen and (min-width: 768px) {
+	#page_body {
+		width: 100%;
+	}
+}
+
+/* Large devices (laptops/desktops, 992px and up) */
+@media only screen and (min-width: 992px) {
+	#page_body {
+		width: 990px;
+	}
+}
+
+/* Extra large devices (large laptops and desktops, 1200px and up) */
+@media only screen and (min-width: 1200px) {
+	#page_body {
+		width: 1200px;
+	}
 }
