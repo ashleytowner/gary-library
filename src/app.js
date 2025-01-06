@@ -9,6 +9,7 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const { config } = require("dotenv");
+const sanitize = require("sanitize-html");
 
 config();
 
@@ -100,6 +101,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use((req, res, next) => {
   res.locals.loggedIn = false;
   res.locals.isAdmin = false;
+	res.locals.sanitize = sanitize;
   next();
 });
 
@@ -714,9 +716,9 @@ app.get("/tags/values/options", (req, res) => {
   );
 });
 
-app.get('/maximised/:filename', (req, res) => {
-	const { filename } = req.params;
-	res.render('maximised', { title: 'Maximised Image', filename });
+app.get("/maximised/:filename", (req, res) => {
+  const { filename } = req.params;
+  res.render("maximised", { title: "Maximised Image", filename });
 });
 
 app.post("/tags", (req, res) => {
@@ -760,17 +762,21 @@ app.get("/profile", (_req, res) => {
       res.sendStatus(404);
       return;
     }
-		db.all("SELECT * FROM v_items WHERE owner = ?", res.locals.userId, (err, rows) => {
-			if (err) {
-				console.error('Could not get items', err);
-				return res.sendStatus(500);
-			}
-			res.render("profile", {
-				title: "Profile",
-				username: row.username,
-				items: rows
-			});
-		});
+    db.all(
+      "SELECT * FROM v_items WHERE owner = ?",
+      res.locals.userId,
+      (err, rows) => {
+        if (err) {
+          console.error("Could not get items", err);
+          return res.sendStatus(500);
+        }
+        res.render("profile", {
+          title: "Profile",
+          username: row.username,
+          items: rows,
+        });
+      },
+    );
   });
 });
 

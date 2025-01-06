@@ -13,10 +13,10 @@
 				<% } %>
 			</td>
 			<td>
-				<a href="/items/<%= item.id %>"><%= item.name %></a>
+				<a href="/items/<%= item.id %>"><%= sanitize(item.name) %></a>
 			</td>
 			<td>
-				<%= item.owner_name %>
+				<%= sanitize(item.owner_name) %>
 			</td>
 			<td>
 				<% if (item.available) { %>

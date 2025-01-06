@@ -3,10 +3,10 @@
   <% if (isOwner) { %>
     <a class="button-like" href="/items/<%= item.id %>/edit">Edit Item</a>
   <% } %>
-  <h1><%= item.name %></h1>
-  <p><em>Owned By <%= item.owner_name %></em></p>
+  <h1><%= sanitize(item.name) %></h1>
+  <p><em>Owned By <%= sanitize(item.owner_name) %></em></p>
   <p>
-    <%= item.available ? "☑ Available" : `☒ Unavailable (On Loan to ${item.username})` %>
+    <%= item.available ? "☑ Available" : `☒ Unavailable (On Loan to ${sanitize(item.username)})` %>
   </p>
   <% if (item.image) { %>
 		<a class="item-image-wrapper" href="/maximised/<%= item.image %>">
@@ -21,7 +21,7 @@
     </form>
   <% } %>
   <h2>Description</h2>
-	<p><%- md(item.description) %></p>
+	<p><%- sanitize(md(item.description)) %></p>
   <% if (isOwner && !item.available) { %>
     <button hx-put="/loan/<%= item.loan_id %>/return" hx-swap="outerHTML">Mark As Returned</button>
   <% } %>
@@ -34,7 +34,7 @@
 <button hx-get="/items/<%= item.id %>/tag" hx-select="#page_body > *" hx-swap="outerHTML">Add Tag</button>
 <% if (tags.length > 0) { %>
 	<% for (const tag of tags) { %>
-		<p><strong><%= tag.tag %></strong>: <%= tag.value %>
+		<p><strong><%= sanitize(tag.tag) %></strong>: <%= sanitize(tag.value) %>
 	<% } %>
 <% } %>
 
@@ -48,7 +48,7 @@
     </tr>
     <% for (const row of requests) { %>
       <tr id="request-<%= row.id %>">
-        <td><%= row.username %></td>
+        <td><%= sanitize(row.username) %></td>
         <td><%= row.created_at %></td>
         <td>
           <button hx-target="#request-<%= row.id %>" hx-put="/requests/<%= row.id %>/approve">

@@ -1,5 +1,5 @@
 <%- include('header') -%>
-<h1>Hello, <%= username %></h1>
+<h1>Hello, <%= sanitize(username) %></h1>
 <form hx-put="/users/update-password">
 	<label for="new_password">New Password</label>
 	<input type="password" name="new_password" />
