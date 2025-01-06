@@ -101,7 +101,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use((req, res, next) => {
   res.locals.loggedIn = false;
   res.locals.isAdmin = false;
-	res.locals.sanitize = sanitize;
+  res.locals.sanitize = sanitize;
   next();
 });
 
@@ -425,35 +425,60 @@ app.put("/items/:id/image", upload.single("image"), (req, res) => {
       return res.status(400).send("Image must be either a jpeg or webp");
     }
   }
-  db.get("SELECT image FROM Items WHERE id = ?", req.params.id, (err, row) => {
-    if (err) {
-      console.error("Could not get item", err);
-      return res.sendStatus(500);
-    }
-    const oldImage = row.image;
-    db.run(
-      "UPDATE Items SET image = ? WHERE id = ?",
-      req.file.filename,
-      req.params.id,
-      (err) => {
-        if (err) {
-          console.error("Could not set new image", err);
-          res.sendStatus(500);
-        } else {
-          res.sendStatus(200);
-        }
-      },
-    );
-    if (oldImage) {
-      fs.unlink(path.join(__dirname, `public/img/${oldImage}`), (err) => {
-        if (err) {
-          console.error("Error Deleting File", oldImage);
-        } else {
-          console.log("Successfully deleted file", oldImage);
-        }
-      });
-    }
-  });
+  db.get(
+    "SELECT owner, image FROM Items WHERE id = ?",
+    req.params.id,
+    (err, row) => {
+      if (err) {
+        console.error("Could not get item", err);
+        return res.sendStatus(500);
+      }
+      if (row.owner !== res.locals.userId) {
+        return res.sendStatus(403);
+      }
+      const oldImage = row.image;
+      db.run(
+        "UPDATE Items SET image = ? WHERE id = ?",
+        req.file.filename,
+        req.params.id,
+        (err) => {
+          if (err) {
+            console.error("Could not set new image", err);
+            res.sendStatus(500);
+          } else {
+            res
+              .status(201)
+              .send(
+                `<img class="item-image" src="/img/${req.file.filename}" />`,
+              );
+          }
+        },
+      );
+      if (oldImage) {
+        fs.unlink(path.join(__dirname, `public/img/${oldImage}`), (err) => {
+          if (err) {
+            console.error("Error Deleting File", oldImage);
+          } else {
+            console.log("Successfully deleted file", oldImage);
+          }
+        });
+      }
+    },
+  );
+});
+
+app.get("/items/:id/image/edit", (req, res) => {
+  res.send( `<form
+      hx-put="/items/${req.params.id}/image"
+      enctype="multipart/form-data"
+      hx-target=".item-image"
+      hx-swap="outerHTML"
+    >
+      <label for="image">Image (JPEG & WebP only)</label>
+      <input type="file" name="image" accept=".jpeg,.jpg,.webp" />
+      <button type="Submit">Change Image</button>
+    </form>`,
+  );
 });
 
 app.post("/items/:id/request", (req, res) => {

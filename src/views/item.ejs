@@ -12,16 +12,14 @@
 		<% } %>
   </p>
   <% if (item.image) { %>
-		<a style="float: right" class="item-image-wrapper" href="/maximised/<%= item.image %>">
-			<img height=150 src="/img/<%= item.image %>" />
-		</a>
-  <% } %>
-  <% if (false && isOwner) { %>
-    <form hx-put="/items/<%= item.id %>/image" enctype="multipart/form-data">
-      <label for="image">Image (JPEG & WebP only)</label>
-      <input type="file" name="image" accept=".jpeg,.jpg,.webp" />
-      <button type="Submit">Change Image</button>
-    </form>
+		<div style="float: right; display: flex; flex-direction: column; align-items: flex-end;">
+			<a  class="item-image-wrapper" href="/maximised/<%= item.image %>">
+				<img class="item-image" src="/img/<%= item.image %>" />
+			</a>
+			<% if (isOwner) { %>
+				<button hx-get="/items/<%= item.id %>/image/edit" hx-swap="outerHTML">Edit Image</button> <% }
+			%>
+		</div>
   <% } %>
   <h2>Description</h2>
 	<p><%- sanitize(md(item.description)) %></p>
@@ -32,12 +30,14 @@
 
 <h2>Tags</h2>
 <% if (tags.length > 0) { %>
+	<dl>
 	<% for (const tag of tags) { %>
-		<p><strong><%= sanitize(tag.tag) %></strong>: <%= sanitize(tag.value) %>
+		<dt><%= sanitize(tag.tag) %></dt>
+		<dd><%= sanitize(tag.value) %></dd>
 	<% } %>
+	</dl>
 <% } %>
-<br />
-<button hx-get="/items/<%= item.id %>/tag" hx-select="#page_body > *" hx-swap="outerHTML">Add Tag</button>
+<br /> <button hx-get="/items/<%= item.id %>/tag" hx-select="#page_body > *" hx-swap="outerHTML">Add Tag</button>
 
 <% if (isOwner && requests.length > 0) { %>
   <h2>Requests</h2>

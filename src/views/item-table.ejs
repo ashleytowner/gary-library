@@ -9,7 +9,7 @@
 		<tr>
 			<td width="90">
 				<% if (item.image) { %>
-					<img width="80" height="112" style="object-fit: cover;" src="/img/<%= item.image %>" />
+					<img width="80" height="112" style="object-fit: cover;" loading="lazy" src="/img/<%= item.image %>" />
 				<% } %>
 			</td>
 			<td>

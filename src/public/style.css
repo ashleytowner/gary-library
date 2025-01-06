@@ -14,10 +14,15 @@
 }
 
 .merriweather-bold,
-strong {
+strong,
+dt {
   font-family: "Merriweather", serif;
   font-weight: 700;
   font-style: normal;
+}
+
+dt::after {
+	content: ':';
 }
 
 .merriweather-black {
@@ -65,7 +70,7 @@ h6 {
 }
 
 h1 {
-	border-bottom: 1px solid #ddd;
+  border-bottom: 1px solid #ddd;
 }
 
 table {
@@ -155,59 +160,63 @@ table {
 }
 
 .maximised-wrapper {
-	position: fixed;
-	display: block;
-	width: 100vw;
-	height: 100vh;
-	background: black;
-	top: 0;
-	left: 0;
+  position: fixed;
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  background: black;
+  top: 0;
+  left: 0;
 }
 
 .maximised-wrapper img {
-	height: 80vh;
-	top: 50%;
-	left: 50%;
-	transform: translate(-50%, -50%);
-	position: absolute;
+  height: 80vh;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  position: absolute;
+}
+
+.item-image {
+	height: 150px;
 }
 
 #page_body {
-	position: relative;
-	margin: auto;
+  position: relative;
+  margin: auto;
 }
 
 /* Extra small devices (phones, 600px and down) */
 @media only screen and (max-width: 600px) {
-	#page_body {
-		width: 100%;
-	}
+  #page_body {
+    width: 100%;
+  }
 }
 
 /* Small devices (portrait tablets and large phones, 600px and up) */
 @media only screen and (min-width: 600px) {
-	#page_body {
-		width: 100%;
-	}
+  #page_body {
+    width: 100%;
+  }
 }
 
 /* Medium devices (landscape tablets, 768px and up) */
 @media only screen and (min-width: 768px) {
-	#page_body {
-		width: 100%;
-	}
+  #page_body {
+    width: 100%;
+  }
 }
 
 /* Large devices (laptops/desktops, 992px and up) */
 @media only screen and (min-width: 992px) {
-	#page_body {
-		width: 990px;
-	}
+  #page_body {
+    width: 990px;
+  }
 }
 
 /* Extra large devices (large laptops and desktops, 1200px and up) */
 @media only screen and (min-width: 1200px) {
-	#page_body {
-		width: 1200px;
-	}
+  #page_body {
+    width: 1200px;
+  }
 }
