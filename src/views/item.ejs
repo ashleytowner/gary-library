@@ -4,7 +4,7 @@
   <p style="display: flex; gap: 2rem; align-items: center;">
     <span><%= item.available ? "☑ Available" : `☒ Unavailable (On Loan to ${sanitize(item.username)})` %></span>
 		<span><em>Owned By <%= sanitize(item.owner_name) %></em></span>
-		<% if (isOwner) { %>
+		<% if (isOwner || isAdmin) { %>
 			<a class="button-like" href="/items/<%= item.id %>/edit">Edit Item</a>
 		<% } %>
 		<% if (!isOwner && !isRequested) { %>
@@ -16,7 +16,7 @@
 			<a  class="item-image-wrapper" href="/maximised/<%= item.image %>">
 				<img class="item-image" src="/img/<%= item.image %>" />
 			</a>
-			<% if (isOwner) { %>
+			<% if (isOwner || isAdmin) { %>
 				<button hx-get="/items/<%= item.id %>/image/edit" hx-swap="outerHTML">Edit Image</button> <% }
 			%>
 		</div>

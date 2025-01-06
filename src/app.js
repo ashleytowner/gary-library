@@ -338,20 +338,29 @@ app.get("/items/create", (_req, res) => {
 
 app.put("/items/:id", (req, res) => {
   const { name, description } = req.body;
-  db.run(
-    "UPDATE Items SET name = ?, description = ? WHERE id = ?",
-    name,
-    description,
-    req.params.id,
-    (err) => {
-      if (err) {
-        console.error("Could not update item", err);
-        return res.sendStatus(500);
-      }
-      res.setHeader("HX-Redirect", `/items/${req.params.id}`);
-      res.sendStatus(200);
-    },
-  );
+  db.get("SELECT * FROM Items WHERE id = ?", req.params.id, (err, row) => {
+    if (err) {
+      console.error("Could not get item", err);
+      return res.sendStatus(500);
+    }
+    if (row.owner !== res.locals.userId && !res.locals.isAdmin) {
+      return res.sendStatus(403);
+    }
+    db.run(
+      "UPDATE Items SET name = ?, description = ? WHERE id = ?",
+      name,
+      description,
+      req.params.id,
+      (err) => {
+        if (err) {
+          console.error("Could not update item", err);
+          return res.sendStatus(500);
+        }
+        res.setHeader("HX-Redirect", `/items/${req.params.id}`);
+        res.sendStatus(200);
+      },
+    );
+  });
 });
 
 app.get("/items/:id/edit", (req, res) => {
