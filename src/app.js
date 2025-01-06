@@ -430,7 +430,7 @@ app.get("/items/:id", (req, res) => {
       }
       const isOwner = item.owner === res.locals.userId;
       db.all(
-        "SELECT * FROM ItemTags WHERE item = ?",
+        "SELECT * FROM ItemTags WHERE item = ? ORDER BY tag ASC",
         req.params.id,
         (err, tags) => {
           if (err) {
@@ -765,7 +765,7 @@ app.get("/items/:id/tag", (req, res) => {
 });
 
 app.get("/tags/options", (req, res) => {
-  db.all("SELECT * FROM tags", (err, rows) => {
+  db.all("SELECT * FROM tags ORDER BY tag ASC", (err, rows) => {
     if (err) {
       console.error("Could not get tags", err);
       return res.sendStatus(500);
@@ -784,7 +784,7 @@ app.get("/tags/values/options", (req, res) => {
     return res.status(400).send("Tag is required");
   }
   db.all(
-    "SELECT DISTINCT value FROM ItemTags WHERE tag = ?",
+    "SELECT DISTINCT value FROM ItemTags WHERE tag = ? ORDER BY value ASC",
     tag,
     (err, rows) => {
       if (err) {
@@ -798,6 +798,16 @@ app.get("/tags/values/options", (req, res) => {
       res.send(opts.join(""));
     },
   );
+});
+
+app.delete("/tags/:id", (req, res) => {
+  db.run("DELETE FROM ItemTags WHERE id = ?", req.params.id, (err) => {
+		if (err) {
+			console.error('Could not delete tag', err);
+			return res.sendStatus(500);
+		}
+		res.status(200).send('');
+	});
 });
 
 app.get("/maximised/:filename", (req, res) => {

@@ -58,6 +58,20 @@ strong em {
   font-style: italic;
 }
 
+.tag {
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+}
+
+.tag dd {
+	margin-inline-start: 0;
+}
+
+.clean-button {
+	border: none;
+}
+
 h1,
 h2,
 h3,

@@ -32,8 +32,17 @@
 <% if (tags.length > 0) { %>
 	<dl>
 	<% for (const tag of tags) { %>
-		<dt><%= sanitize(tag.tag) %></dt>
-		<dd><%= sanitize(tag.value) %></dd>
+		<div class="tag" id="tag-<%= tag.id %>">
+			<dt><%= sanitize(tag.tag) %></dt>
+			<dd><%= sanitize(tag.value) %></dd>
+			<button 
+				class="clean-button"
+				hx-confirm="Are you sure you want to delete this tag?"
+				hx-delete="/tags/<%= tag.id %>"
+				hx-target="#tag-<%= tag.id %>"
+				hx-swap="outerHTML"
+			>&#x2716;</button>
+		</div>
 	<% } %>
 	</dl>
 <% } %>
