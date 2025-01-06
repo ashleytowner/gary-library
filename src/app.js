@@ -15,7 +15,25 @@ config();
 
 const app = express();
 
-const upload = multer({ dest: path.join(__dirname, "public/img") });
+const storage = multer.diskStorage({
+	destination: (req, file, cb) => {
+		cb(null, path.join(__dirname, "public/img"));
+	},
+	filename: (req, file, cb) => {
+		let extension = '';
+		switch(file.mimetype) {
+			case 'image/jpeg':
+				extension = 'jpg';
+				break;
+			case 'image/webp':
+				extension = 'webp';
+				break;
+		}
+		cb(null, Date.now() + `.${extension}`);
+	}
+})
+
+const upload = multer({ storage: storage });
 
 db.serialize(() => {
   db.run(`CREATE TABLE IF NOT EXISTS Items (
@@ -493,7 +511,7 @@ app.put("/items/:id/image", upload.single("image"), (req, res) => {
         console.error("Could not get item", err);
         return res.sendStatus(500);
       }
-      if (row.owner !== res.locals.userId) {
+      if (row.owner !== res.locals.userId && !res.locals.isAdmin) {
         return res.sendStatus(403);
       }
       const oldImage = row.image;
@@ -531,12 +549,11 @@ app.get("/items/:id/image/edit", (req, res) => {
   res.send(`<form
       hx-put="/items/${req.params.id}/image"
       enctype="multipart/form-data"
-      hx-target=".item-image"
-      hx-swap="outerHTML"
+      hx-target="#image-box"
     >
       <label for="image">Image (JPEG & WebP only)</label>
       <input type="file" name="image" accept=".jpeg,.jpg,.webp" />
-      <button type="Submit">Change Image</button>
+      <button type="Submit">Save Image</button>
     </form>`);
 });
 
@@ -808,11 +825,6 @@ app.delete("/tags/:id", (req, res) => {
 		}
 		res.status(200).send('');
 	});
-});
-
-app.get("/maximised/:filename", (req, res) => {
-  const { filename } = req.params;
-  res.render("maximised", { title: "Maximised Image", filename });
 });
 
 app.post("/tags", (req, res) => {

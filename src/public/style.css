@@ -173,24 +173,6 @@ table {
   gap: 2rem;
 }
 
-.maximised-wrapper {
-  position: fixed;
-  display: block;
-  width: 100vw;
-  height: 100vh;
-  background: black;
-  top: 0;
-  left: 0;
-}
-
-.maximised-wrapper img {
-  height: 80vh;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  position: absolute;
-}
-
 .item-image {
 	height: 150px;
 }

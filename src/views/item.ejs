@@ -11,16 +11,16 @@
 			<button hx-post="/items/<%= item.id %>/request">Request to Borrow</button>
 		<% } %>
   </p>
-  <% if (item.image) { %>
-		<div style="float: right; display: flex; flex-direction: column; align-items: flex-end;">
-			<a  class="item-image-wrapper" href="/maximised/<%= item.image %>">
-				<img class="item-image" src="/img/<%= item.image %>" />
-			</a>
-			<% if (isOwner || isAdmin) { %>
-				<button hx-get="/items/<%= item.id %>/image/edit" hx-swap="outerHTML">Edit Image</button> <% }
-			%>
-		</div>
-  <% } %>
+	<div id="image-box" style="float: right; display: flex; flex-direction: column; align-items: flex-end;">
+		<% if (item.image) { %>
+			<img class="item-image" src="/img/<%= item.image %>" />
+		<% } %>
+		<% if (isOwner || isAdmin) { %>
+			<button hx-get="/items/<%= item.id %>/image/edit" hx-swap="outerHTML">
+				<% if (item.image) { %>Change Image<% } else { %>Add Image<% } %>
+			</button> <% }
+		%>
+	</div>
   <h2>Description</h2>
 	<p><%- sanitize(md(item.description)) %></p>
   <% if (isOwner && !item.available) { %>
