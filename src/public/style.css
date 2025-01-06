@@ -186,6 +186,10 @@ table {
   margin: auto;
 }
 
+.comment + .comment {
+	border-top: 1px solid #ddd;
+}
+
 /* Extra small devices (phones, 600px and down) */
 @media only screen and (max-width: 600px) {
   #page_body {

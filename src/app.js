@@ -74,6 +74,15 @@ db.serialize(() => {
     value TEXT NOT NULL,
     FOREIGN KEY (item) REFERENCES Items(id)
   )`);
+  db.run(`CREATE TABLE IF NOT EXISTS Comments (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		user NUMBER NOT NULL,
+		item NUMBER NOT NULL,
+		content TEXT NOT NULL,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (user) REFERENCES Users(id),
+		FOREIGN KEY (item) REFERENCES Items(id)
+	)`);
   db.run(
     "CREATE VIEW IF NOT EXISTS tags AS SELECT DISTINCT tag FROM ItemTags;",
   );
@@ -360,6 +369,38 @@ app.get("/items/:id/edit", (req, res) => {
   });
 });
 
+app.post("/items/:id/comment", (req, res) => {
+  const { content } = req.body;
+  if (!content) {
+    return res.status(400).send("Content must be supplied");
+  }
+  db.run(
+    `INSERT INTO Comments (item, user, content) VALUES (?, ?, ?)`,
+    req.params.id,
+    res.locals.userId,
+    content,
+    (err) => {
+      if (err) {
+        console.error("Could not create comment", err);
+        return res.sendStatus(500);
+      }
+      res.setHeader("HX-Refresh", "true");
+      res.sendStatus(201);
+    },
+  );
+});
+
+app.get("/items/:id/comment/create", (req, res) => {
+  res.render("layout", {
+    title: "New Comment",
+    body: `<form hx-post="/items/${req.params.id}/comment">
+      <label for="content">Comment:</label>
+      <textarea name="content"></textarea>
+      <button type="submit">Add Comment</button>
+    </form>`,
+  });
+});
+
 app.get("/items/:id", (req, res) => {
   db.get(
     `SELECT i.*, l.id as loan_id, u.username
@@ -396,15 +437,25 @@ app.get("/items/:id", (req, res) => {
               const isRequested = requests.some(
                 (request) => request.user === res.locals.userId,
               );
-              res.render("item", {
-                title: item.name,
-                isOwner,
-                item,
-                tags,
-                requests,
-                isRequested,
-                md: marked.parse,
-              });
+              db.all(
+                "SELECT c.*, u.username FROM Comments c JOIN Users u ON c.user = u.id WHERE item = ? ORDER BY created_at DESC",
+                item.id,
+                (err, comments) => {
+                  if (err) {
+                    console.error("Could not fetch comments", err);
+                  }
+                  res.render("item", {
+                    title: item.name,
+                    isOwner,
+                    item,
+                    tags,
+                    requests: requests || [],
+                    isRequested,
+                    md: marked.parse,
+                    comments: comments || [],
+                  });
+                },
+              );
             },
           );
         },
@@ -468,7 +519,7 @@ app.put("/items/:id/image", upload.single("image"), (req, res) => {
 });
 
 app.get("/items/:id/image/edit", (req, res) => {
-  res.send( `<form
+  res.send(`<form
       hx-put="/items/${req.params.id}/image"
       enctype="multipart/form-data"
       hx-target=".item-image"
@@ -477,8 +528,7 @@ app.get("/items/:id/image/edit", (req, res) => {
       <label for="image">Image (JPEG & WebP only)</label>
       <input type="file" name="image" accept=".jpeg,.jpg,.webp" />
       <button type="Submit">Change Image</button>
-    </form>`,
-  );
+    </form>`);
 });
 
 app.post("/items/:id/request", (req, res) => {

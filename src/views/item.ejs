@@ -63,4 +63,14 @@
     <% } %>
   </table>
 <% } %>
+<h2>Comments</h2>
+<button hx-get="/items/<%= item.id %>/comment/create" hx-select="form" hx-swap="outerHTML">Add Comment</button>
+<% if (comments.length > 0) { %>
+	<% for (const comment of comments) { %>
+		<div class="comment">
+			<p><strong><%= sanitize(comment.username) %> (<%= comment.created_at %>)</strong></p>
+			<p><%= sanitize(comment.content) %></p>
+		</div>
+	<% } %>
+<% } %>
 <%- include('footer') -%>
