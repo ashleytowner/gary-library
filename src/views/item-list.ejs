@@ -7,7 +7,7 @@
 		<input
 			type="search"
 			name="search"
-			value="<%= sanitize(search) %>"
+			value="<%= search %>"
 			hx-get="/items"
 			hx-trigger="keyup changed delay:500ms, search"
 			hx-target="#item-table"
@@ -18,9 +18,9 @@
 	<div id="item-table">
 		<%- include('item-table') -%>
 		<p class="pagination">
-			<a href="/items?search=<%= sanitize(search) %>&page=<%= page - 1 %>" <% if(page === 1) { %>class="hidden"<% } %>>&lt; prev</a>
+			<a href="/items?search=<%= search %>&page=<%= page - 1 %>" <% if(page === 1) { %>class="hidden"<% } %>>&lt; prev</a>
 			<% for (const pageNum of Array.from({ length: pageCount }, (_, i) => i + 1)) { %>
-			<a href="/items?search=<%= sanitize(search) %>&page=<%= pageNum %>">
+			<a href="/items?search=<%= search %>&page=<%= pageNum %>">
 				<% if (page === pageNum) { %>
 					<strong><%= pageNum %></strong>
 				<% } else { %>
@@ -28,7 +28,7 @@
 				<% } %>
 			</a>
 			<% } %>
-			<a href="/items?search=<%= sanitize(search) %>&page=<%= page + 1 %>" <% if (page === pageCount) { %>class="hidden"<% } %>>next &gt;</a>
+			<a href="/items?search=<%= search %>&page=<%= page + 1 %>" <% if (page === pageCount) { %>class="hidden"<% } %>>next &gt;</a>
 		</p>
 	</div>
 <%- include('footer') -%>

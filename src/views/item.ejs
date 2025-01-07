@@ -1,9 +1,13 @@
 <%- include('header') -%>
 <div>
-  <h1><%= sanitize(item.name) %></h1>
+  <h1><%= item.name %></h1>
   <p style="display: flex; gap: 2rem; align-items: center;">
-    <span><%= item.available ? "☑ Available" : `☒ Unavailable (On Loan to ${sanitize(item.username)})` %></span>
-		<span><em>Owned By <%= sanitize(item.owner_name) %></em></span>
+		<% if (item.available) { %>
+			<span>☑ Available</span>
+		<% } else { %>
+			<span>☒ Unavailable (On Loan to <%= item.username %>)</span>
+		<% } %>
+		<span><em>Owned By <%= item.owner_name %></em></span>
 		<% if (isOwner || isAdmin) { %>
 			<a class="button-like" href="/items/<%= item.id %>/edit">Edit Item</a>
 		<% } %>
@@ -33,8 +37,8 @@
 	<dl>
 	<% for (const tag of tags) { %>
 		<div class="tag" id="tag-<%= tag.id %>">
-			<dt><%= sanitize(tag.tag) %></dt>
-			<dd><%= sanitize(tag.value) %></dd>
+			<dt><%= tag.tag %></dt>
+			<dd><%= tag.value %></dd>
 			<button 
 				class="clean-button"
 				hx-confirm="Are you sure you want to delete this tag?"
@@ -58,7 +62,7 @@
     </tr>
     <% for (const row of requests) { %>
       <tr id="request-<%= row.id %>">
-        <td><%= sanitize(row.username) %></td>
+        <td><%= row.username %></td>
         <td><%= row.created_at %></td>
         <td>
           <button hx-target="#request-<%= row.id %>" hx-put="/requests/<%= row.id %>/approve">
@@ -74,12 +78,11 @@
 <% } %>
 <h2>Comments</h2>
 <button hx-get="/items/<%= item.id %>/comment/create" hx-select="form" hx-swap="outerHTML">Add Comment</button>
+<div id="comments">
 <% if (comments.length > 0) { %>
 	<% for (const comment of comments) { %>
-		<div class="comment">
-			<p><strong><%= sanitize(comment.username) %> (<%= comment.created_at %>)</strong></p>
-			<p><%= sanitize(comment.content) %></p>
-		</div>
+		<%- include('comment', { comment: comment }) -%>
 	<% } %>
 <% } %>
+</div>
 <%- include('footer') -%>

@@ -1,0 +1,4 @@
+<div class="comment">
+	<p><strong><%= comment.username %> (<%= dateTimeFormat(comment.created_at) %>)</strong></p>
+	<p><%- sanitize(md(comment.content)) %></p>
+</div>

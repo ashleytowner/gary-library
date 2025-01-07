@@ -16,22 +16,22 @@ config();
 const app = express();
 
 const storage = multer.diskStorage({
-	destination: (req, file, cb) => {
-		cb(null, path.join(__dirname, "public/img"));
-	},
-	filename: (req, file, cb) => {
-		let extension = '';
-		switch(file.mimetype) {
-			case 'image/jpeg':
-				extension = 'jpg';
-				break;
-			case 'image/webp':
-				extension = 'webp';
-				break;
-		}
-		cb(null, Date.now() + `.${extension}`);
-	}
-})
+  destination: (req, file, cb) => {
+    cb(null, path.join(__dirname, "public/img"));
+  },
+  filename: (req, file, cb) => {
+    let extension = "";
+    switch (file.mimetype) {
+      case "image/jpeg":
+        extension = "jpg";
+        break;
+      case "image/webp":
+        extension = "webp";
+        break;
+    }
+    cb(null, Date.now() + `.${extension}`);
+  },
+});
 
 const upload = multer({ storage: storage });
 
@@ -125,10 +125,15 @@ app.set("views", "src/views");
 app.use(express.static(path.join(__dirname, "public")));
 app.use(express.urlencoded({ extended: true }));
 
-app.use((req, res, next) => {
+app.use((_req, res, next) => {
   res.locals.loggedIn = false;
   res.locals.isAdmin = false;
   res.locals.sanitize = sanitize;
+	res.locals.md = marked.parse;
+	res.locals.dateTimeFormat = (datestring) => {
+		const date = new Date(datestring);
+		return `${date.toLocaleDateString()}`
+	}
   next();
 });
 
@@ -210,7 +215,7 @@ app.use((req, res, next) => {
     const sessionId = req.cookies["Authorization"];
 
     db.all(
-      "SELECT user, is_admin, created_at FROM Sessions s JOIN Users u ON s.user = u.id WHERE s.key = ?",
+      "SELECT user, is_admin, created_at, username FROM Sessions s JOIN Users u ON s.user = u.id WHERE s.key = ?",
       sessionId,
       (err, rows) => {
         if (err) {
@@ -236,6 +241,7 @@ app.use((req, res, next) => {
           return res.redirect("/logout");
         }
 
+        res.locals.username = rows[0].username;
         res.locals.userId = rows[0].user;
         res.locals.isAdmin = Boolean(rows[0].is_admin);
         res.locals.loggedIn = true;
@@ -411,8 +417,13 @@ app.post("/items/:id/comment", (req, res) => {
         console.error("Could not create comment", err);
         return res.sendStatus(500);
       }
-      res.setHeader("HX-Refresh", "true");
-      res.sendStatus(201);
+      res.render("comment", {
+        comment: {
+          username: res.locals.username,
+          created_at: Date.now(),
+          content,
+        },
+      });
     },
   );
 });
@@ -420,7 +431,7 @@ app.post("/items/:id/comment", (req, res) => {
 app.get("/items/:id/comment/create", (req, res) => {
   res.render("layout", {
     title: "New Comment",
-    body: `<form hx-post="/items/${req.params.id}/comment">
+    body: `<form hx-post="/items/${req.params.id}/comment" hx-target="#comments" hx-swap="afterbegin">
       <label for="content">Comment:</label>
       <textarea name="content"></textarea>
       <button type="submit">Add Comment</button>
@@ -478,7 +489,6 @@ app.get("/items/:id", (req, res) => {
                     tags,
                     requests: requests || [],
                     isRequested,
-                    md: marked.parse,
                     comments: comments || [],
                   });
                 },
@@ -819,12 +829,12 @@ app.get("/tags/values/options", (req, res) => {
 
 app.delete("/tags/:id", (req, res) => {
   db.run("DELETE FROM ItemTags WHERE id = ?", req.params.id, (err) => {
-		if (err) {
-			console.error('Could not delete tag', err);
-			return res.sendStatus(500);
-		}
-		res.status(200).send('');
-	});
+    if (err) {
+      console.error("Could not delete tag", err);
+      return res.sendStatus(500);
+    }
+    res.status(200).send("");
+  });
 });
 
 app.post("/tags", (req, res) => {

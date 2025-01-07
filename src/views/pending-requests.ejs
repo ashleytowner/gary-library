@@ -6,7 +6,7 @@
 </tr>
 <% for (const request of pendingRequests) { %>
 	<tr height="80" id="request-<%= request.id %>">
-		<td><%= sanitize(request.borrower) %> has requested to borrow <a href="/items/<%= request.item %>"><%= sanitize(request.item_name) %></a></td>
+		<td><%= request.borrower %> has requested to borrow <a href="/items/<%= request.item %>"><%= request.item_name %></a></td>
 		<td>
 			<button hx-target="#request-<%= request.id %>" hx-put="/requests/<%= request.id %>/approve">
 				Approve
