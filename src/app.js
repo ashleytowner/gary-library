@@ -453,13 +453,9 @@ app.post("/items/:id/comment", (req, res) => {
 });
 
 app.get("/items/:id/comment/create", (req, res) => {
-  res.render("layout", {
+  res.render("comment-form", {
     title: "New Comment",
-    body: `<form hx-post="/items/${req.params.id}/comment" hx-target="#comments" hx-swap="afterbegin">
-      <label for="content">Comment:</label>
-      <textarea name="content"></textarea>
-      <button type="submit">Add Comment</button>
-    </form>`,
+    itemId: req.params.id
   });
 });
 

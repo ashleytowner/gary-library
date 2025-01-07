@@ -3,11 +3,19 @@
 	<p>Here you can view & search through all the items in the library</p>
 	<a class="button-like" href="/items/create">Add Item</a>
 	<form action="/items" method="GET">
+		<span>
 		<label for="search">Search</label>
+		<%- include('tooltip', { 
+			text: `- Search through the name & description of an item<br />
+			- Search a tag like tag:value<br />
+			- Group words with "quotes like this"`
+		}) -%>
+		</span>
 		<input
 			type="search"
 			name="search"
 			value="<%= search %>"
+			placeholder="Search"
 			hx-get="/items"
 			hx-trigger="keyup changed delay:500ms, search"
 			hx-target="#item-table"

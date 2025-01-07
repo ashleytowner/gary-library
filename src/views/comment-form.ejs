@@ -1,0 +1,10 @@
+<%- include('header') -%>
+<form hx-post="/items/<%= itemId %>/comment" hx-target="#comments" hx-swap="afterbegin">
+	<span>
+		<label for="content">Comment</label>
+		<%- include('tooltip', { text: 'You can use <a target="_blank" href="https://www.markdownguide.org/basic-syntax/">markdown</a> in here' }) -%>
+	</span>
+	<textarea name="content"></textarea>
+	<button type="submit">Add Comment</button>
+</form>
+<%- include('footer') -%>

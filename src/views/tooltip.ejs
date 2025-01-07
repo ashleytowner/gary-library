@@ -1,0 +1,40 @@
+<style>
+	.tooltip {
+		display: inline;
+	}
+	.tooltip .tooltip__icon {
+		border: none;
+	}
+
+	.tooltip .tooltip__icon:hover,
+	.tooltip .tooltip__icon:focus
+	{
+		background: none;
+	}
+
+	.tooltip .tooltip__text {
+		background: #444;
+		color: #fff;
+		padding: 4px;
+		border-radius: 4px;
+		display: none;
+		max-width: 200px;
+		max-height: 250px;
+		overflow: auto;
+		position: absolute;
+	}
+	
+	.tooltip .tooltip__text * {
+		color: #fff;
+	}
+
+	.tooltip:hover .tooltip__text,
+	.tooltip .tooltip__icon:hover + .tooltip__text,
+	.tooltip .tooltip__icon:focus + .tooltip__text {
+		display: inline-block;
+	}
+</style>
+<div class="tooltip">
+	<button class="tooltip__icon" type="button"><i class="fa-solid fa-circle-question"></i></button>
+	<p class="tooltip__text"><%- text %></p>
+</div>

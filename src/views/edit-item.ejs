@@ -11,7 +11,10 @@
 		<label for="image">Image (JPEG & WebP only)</label>
 		<input type="file" name="image" accept=".jpeg,.jpg,.webp" />
 	<% } %>
-	<label for="description">Description</label>
+	<span>
+		<label for="description">Description</label>
+		<%- include('tooltip', { text: 'You can use <a target="_blank" href="https://www.markdownguide.org/basic-syntax/">markdown</a> in here' }) -%>
+	</span>
 	<textarea rows="15" name="description"><%= item.description || '' -%></textarea>
 	<button type="submit">Save Item</button>
 </form>
