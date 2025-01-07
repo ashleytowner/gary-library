@@ -72,6 +72,18 @@ strong em {
 	border: none;
 }
 
+.tag-delete {
+	opacity: 0;
+}
+
+.tag-delete:focus, .tag-delete:hover {
+	opacity: 1;
+}
+
+.tag:hover .tag-delete {
+	opacity: 1;
+}
+
 h1,
 h2,
 h3,
