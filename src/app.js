@@ -296,8 +296,21 @@ app.get("/pending-requests", (_req, res) => {
 });
 
 app.get("/items", (req, res) => {
+	const dequote = (str) => {
+		const quoted = str.match(/^"(.+)"$/);
+		if (quoted) return quoted[1];
+		return str;
+	};
+  /** @type {string} */
   const search = (req.query.search || "").trim();
-  const searchTerms = search ? [search, ...search.split(" ")] : [];
+  const searchPattern = /(?:[^\s"]+|"[^"]*")+/g;
+  const matches =
+    search.match(searchPattern)?.map(dequote) || [];
+  /** @type {string[]} */
+  const searchTerms = search ? [search, ...matches] : [];
+  const tagTerms = matches
+    .filter((term) => term.indexOf(":") !== -1)
+    .map((term) => term.split(":").map(dequote));
 
   const page = req.query.page ? Number(req.query.page) : 1;
   const PAGE_SIZE = 25;
@@ -314,6 +327,11 @@ app.get("/items", (req, res) => {
             SELECT i.* FROM v_items i LEFT JOIN ItemTags it ON i.id = it.item WHERE it.value LIKE ?
           `;
         })
+        .concat(
+          tagTerms.map((_) => {
+            return `SELECT i.* FROM v_items i JOIN ItemTags it ON i.id = it.item WHERE it.tag LIKE ? AND it.value LIKE ?`;
+          }),
+        )
         .join(" UNION ALL ")
     : "SELECT * FROM v_items";
 
@@ -324,8 +342,14 @@ app.get("/items", (req, res) => {
   const limitedQuery = `SELECT * FROM (${mainQuery}) LIMIT ${PAGE_SIZE} OFFSET ?`;
 
   const parameters = search
-    ? searchTerms.map((term) => [`%${term}%`, `%${term}%`, `%${term}%`]).flat()
+    ? searchTerms
+        .map((term) => [`%${term}%`, `%${term}%`, `%${term}%`])
+        .concat(tagTerms.map((term) => [`%${term[0]}%`, `%${term[1]}%`]))
+        .flat()
     : [];
+
+	console.log(subquery);
+	console.log(parameters);
 
   db.get(countQuery, ...parameters, (err, row) => {
     if (err) {
@@ -951,7 +975,7 @@ app.get("/admin", isAdmin, (req, res) => {
           .join("")}`;
         res.render("layout", {
           title: "Sessions",
-          body: '<h1>Admin Panel</h1>' + userTable + sessiontable,
+          body: "<h1>Admin Panel</h1>" + userTable + sessiontable,
         });
       },
     );
