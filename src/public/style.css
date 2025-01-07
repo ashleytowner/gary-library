@@ -191,6 +191,15 @@ table {
   #page_body {
     width: 100%;
   }
+
+	.navbar a span {
+		display: none;
+	}
+
+	.navbar {
+		justify-content: space-between;
+		padding: 0 2rem;
+	}
 }
 
 /* Small devices (portrait tablets and large phones, 600px and up) */

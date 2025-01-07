@@ -129,11 +129,11 @@ app.use((_req, res, next) => {
   res.locals.loggedIn = false;
   res.locals.isAdmin = false;
   res.locals.sanitize = sanitize;
-	res.locals.md = marked.parse;
-	res.locals.dateTimeFormat = (datestring) => {
-		const date = new Date(datestring);
-		return `${date.toLocaleDateString()}`
-	}
+  res.locals.md = marked.parse;
+  res.locals.dateTimeFormat = (datestring) => {
+    const date = new Date(datestring);
+    return `${date.toLocaleDateString()}`;
+  };
   next();
 });
 
@@ -905,29 +905,7 @@ const isAdmin = (_req, res, next) => {
   }
 };
 
-app.get("/sessions", isAdmin, (req, res) => {
-  db.all(
-    "SELECT s.*, u.username FROM Sessions s JOIN Users u ON s.user = u.id",
-    (err, rows) => {
-      if (err) {
-        console.error("Could not fetch sessions", err);
-        return res.sendStatus(500);
-      }
-      const table = `<table><tr><th>Session</th><th>User</th><th>Created</th><th>Action</th></tr>${rows
-        .map((session) => {
-          return `<tr><td>${session.key.substring(0, 8)}...</td><td>${
-            session.username
-          }</td><td>${
-            session.created_at
-          }</td><td><button hx-delete="/sessions/${
-            session.id
-          }">Invalidate</button></td></tr>`;
-        })
-        .join("")}`;
-      res.render("layout", { title: "Sessions", body: table });
-    },
-  );
-});
+app.get("/sessions", isAdmin, (req, res) => {});
 
 app.delete("/sessions/:id", isAdmin, (req, res) => {
   db.run("DELETE FROM Sessions WHERE id = ?", req.params.id, (err) => {
@@ -940,25 +918,43 @@ app.delete("/sessions/:id", isAdmin, (req, res) => {
   });
 });
 
-app.get("/users", isAdmin, (req, res) => {
-  db.all("SELECT * FROM Users", (err, rows) => {
+app.get("/admin", isAdmin, (req, res) => {
+  db.all("SELECT * FROM Users", (err, users) => {
     if (err) {
       console.error("Could not fetch users", err);
       res.sendStatus(500);
       return;
     }
-    const table = `<table><tr><th>Username</th><th>Is Admin</th><th></th></tr>${rows
-      .map(
-        (user) =>
-          `<tr><td>${user.username}</td><td>${user.is_admin}</td><td><button hx-delete="/users/${user.id}">Delete</button</td></tr>`,
-      )
-      .join("")}</table>`;
-    req.hxRequest
-      ? res.send(table)
-      : res.render("layout", {
-          title: "Users",
-          body: '<a href="/users/create">Add a user</a>' + table,
+    db.all(
+      "SELECT s.*, u.username FROM Sessions s JOIN Users u ON s.user = u.id",
+      (err, rows) => {
+        if (err) {
+          console.error("Could not fetch sessions", err);
+          return res.sendStatus(500);
+        }
+        const userTable = `<h2>Users</h2><table><tr><th>Username</th><th>Is Admin</th><th></th></tr>${users
+          .map(
+            (user) =>
+              `<tr><td>${user.username}</td><td>${user.is_admin}</td><td><button hx-delete="/users/${user.id}">Delete</button</td></tr>`,
+          )
+          .join("")}</table>`;
+        const sessiontable = `<h2>Sessions</h2><table><tr><th>Session</th><th>User</th><th>Created</th><th>Action</th></tr>${rows
+          .map((session) => {
+            return `<tr><td>${session.key.substring(0, 8)}...</td><td>${
+              session.username
+            }</td><td>${
+              session.created_at
+            }</td><td><button hx-delete="/sessions/${
+              session.id
+            }">Invalidate</button></td></tr>`;
+          })
+          .join("")}`;
+        res.render("layout", {
+          title: "Sessions",
+          body: '<h1>Admin Panel</h1>' + userTable + sessiontable,
         });
+      },
+    );
   });
 });
 

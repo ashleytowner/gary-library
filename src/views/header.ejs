@@ -3,6 +3,7 @@
 	<head>
 		<meta charset="UTF-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<script src="https://kit.fontawesome.com/7ad87d222b.js" crossorigin="anonymous"></script>
 		<title><%= title %></title>
 		<link href="/style.css" rel="stylesheet">
 		<script src="https://unpkg.com/htmx.org@2.0.4" integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+" crossorigin="anonymous"></script>
@@ -10,15 +11,14 @@
 	<body>
 		<% if (loggedIn) { %>
 			<nav class="navbar">
-				<a href="/">Home</a>
-				<a href="/items">Items</a>
+				<a href="/"><i class="fa-solid fa-building-columns"></i> <span>Home</span></a>
+				<a href="/items"><i class="fa-solid fa-book"></i> <span>Items</span></a>
+				<a href="/profile"><i class="fa-solid fa-user"></i> <span>Profile</span></a>
+				<a href="/pending-requests"><i class="fa-solid fa-bell"></i> <span>Pending Requests</span> (<%= pendingRequestCount %>)</a>
 				<% if (isAdmin) { %>
-					<a href="/users">Users</a>
-					<a href="/sessions">Sessions</a>
+					<a href="/admin"><i class="fa-solid fa-user-tie"></i> <span>Admin</span></a>
 				<% } %>
-				<a href="/profile">Profile</a>
-				<a href="/pending-requests">Pending Requests (<%= pendingRequestCount %>)</a>
-				<a href="/logout">Logout</a>
+				<a href="/logout"><i class="fa-solid fa-right-from-bracket"></i> <span>Logout</span></a>
 			</nav>
 		<% } %>
 		<main id="page_body">
